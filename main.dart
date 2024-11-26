@@ -1,6 +1,7 @@
 import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(MyApp());
@@ -19,7 +20,7 @@ class MyApp extends StatelessWidget {
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 31, 81, 157)),
         ),
-        home: MyHomePage(),
+        home: LoginPage(), // A aplicação começa na tela de login
       ),
     );
   }
@@ -33,7 +34,6 @@ class MyAppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ↓ Add the code below.
   var favorites = <WordPair>[];
 
   void toggleFavorite() {
@@ -46,10 +46,242 @@ class MyAppState extends ChangeNotifier {
   }
 }
 
-// ...
- 
+// Tela de Login
+// Tela de Login
+class LoginPage extends StatelessWidget {
+  final _formKey = GlobalKey<FormState>(); // Definindo uma chave para o formulário
 
-// ...
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Login'),
+        backgroundColor: Theme.of(context).colorScheme.primaryFixed,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Form( // Usando o Form para validar os campos
+          key: _formKey,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Bem-vindo!',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              SizedBox(height: 20),
+              
+              // Campo Email
+              TextFormField(
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                validator: (value) {
+                  // Validação do campo de email
+                  if (value == null || value.isEmpty) {
+                    return 'Informe o email';
+                  }
+                  final RegExp regex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                  if (!regex.hasMatch(value)) {
+                    return 'Informe um email válido';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 20),
+
+              // Campo Senha
+              TextFormField(
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Senha',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                textInputAction: TextInputAction.done,
+                validator: (value) {
+                  // Validação do campo de senha
+                  if (value == null || value.isEmpty) {
+                    return 'Informe a senha';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 20),
+
+              // Botão Entrar
+              ElevatedButton(
+                onPressed: () {
+                  if (_formKey.currentState?.validate() ?? false) {
+                    // Se o formulário for válido, navega para a próxima tela
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => ProfileCreationPage()),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                ),
+                child: Text('Entrar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ProfileCreationPage extends StatefulWidget {
+  @override
+  State<ProfileCreationPage> createState() => _ProfileCreationPageState();
+}
+
+class _ProfileCreationPageState extends State<ProfileCreationPage> {
+  final _formKey = GlobalKey<FormState>();
+  String? nome;
+  String? dataNascimento;
+  String? genero;
+  String? categoriaFavorita;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Criar Perfil'),
+        backgroundColor: Theme.of(context).colorScheme.primaryFixed,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              // Campo Nome
+              TextFormField(
+                decoration: InputDecoration(
+                  labelText: 'Nome',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                onSaved: (value) {
+                  nome = value;
+                },
+              ),
+              SizedBox(height: 20),
+
+              // Campo Data de Nascimento com especificação de formato
+              TextFormField(
+                decoration: InputDecoration(
+                  labelText: 'Data de Nascimento (DD/MM/AAAA)',
+                  hintText: 'Exemplo: 25/11/1995',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                onSaved: (value) {
+                  dataNascimento = value;
+                },
+                keyboardType: TextInputType.datetime,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'\d|/')),
+                ],
+                validator: (value) {
+                  // Validação básica para o formato DD/MM/AAAA
+                  if (value == null || value.isEmpty) {
+                    return 'Informe a data de nascimento';
+                  }
+                  final RegExp regex =
+                      RegExp(r'^\d{2}/\d{2}/\d{4}$');
+                  if (!regex.hasMatch(value)) {
+                    return 'Formato inválido. Use DD/MM/AAAA';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 20),
+
+              // Campo Gênero de Jogos
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Gênero de Jogos Favorito',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                items: [
+                  'Ação',
+                  'Aventura',
+                  'RPG',
+                  'Estratégia',
+                  'Esportes'
+                ].map((genero) {
+                  return DropdownMenuItem(
+                    value: genero,
+                    child: Text(genero),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    genero = value;
+                  });
+                },
+              ),
+              SizedBox(height: 20),
+
+              // Campo Categoria Favorita
+              TextFormField(
+                decoration: InputDecoration(
+                  labelText: 'Categoria Favorita',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                onSaved: (value) {
+                  categoriaFavorita = value;
+                },
+              ),
+              SizedBox(height: 20),
+
+              // Botão Salvar e Continuar
+              ElevatedButton(
+                onPressed: () {
+                  if (_formKey.currentState!.validate()) {
+                    _formKey.currentState?.save();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => MyHomePage()),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                ),
+                child: Text('Salvar e Continuar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
 
 class MyHomePage extends StatefulWidget {
   @override

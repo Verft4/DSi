@@ -2,7 +2,13 @@ import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
+import 'package:csv/csv.dart';
 
+Future<List<List<dynamic>>> carregarCsv() async {
+  String data = await rootBundle.loadString('assets/dataset.csv');
+  List<List<dynamic>> dataset = CsvToListConverter().convert(data);
+  return dataset;
+}
 void main() {
   runApp(MyApp());
 }
@@ -44,7 +50,14 @@ class MyAppState extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  // Método para remover um favorito da lista
+  void removeFavorite(WordPair pair) {
+    favorites.remove(pair);
+    notifyListeners();
+  }
 }
+
 
 // Tela de Login
 // Tela de Login
@@ -63,10 +76,11 @@ class LoginPage extends StatelessWidget {
         child: Form( // Usando o Form para validar os campos
           key: _formKey,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,  // Alinha o conteúdo mais para o topo
             children: [
+              SizedBox(height: 50), // Ajuste o valor para mais ou menos conforme necessário
               Text(
-                'Bem-vindo!',
+                'Game Library',  // Alterando o texto aqui
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               SizedBox(height: 20),
@@ -142,6 +156,8 @@ class LoginPage extends StatelessWidget {
   }
 }
 
+
+
 class ProfileCreationPage extends StatefulWidget {
   @override
   State<ProfileCreationPage> createState() => _ProfileCreationPageState();
@@ -181,7 +197,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
               ),
               SizedBox(height: 20),
 
-              // Campo Data de Nascimento com especificação de formato
+              // Campo Data de Nascimento
               TextFormField(
                 decoration: InputDecoration(
                   labelText: 'Data de Nascimento (DD/MM/AAAA)',
@@ -194,16 +210,11 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                   dataNascimento = value;
                 },
                 keyboardType: TextInputType.datetime,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'\d|/')),
-                ],
                 validator: (value) {
-                  // Validação básica para o formato DD/MM/AAAA
                   if (value == null || value.isEmpty) {
                     return 'Informe a data de nascimento';
                   }
-                  final RegExp regex =
-                      RegExp(r'^\d{2}/\d{2}/\d{4}$');
+                  final regex = RegExp(r'^\d{2}/\d{2}/\d{4}$');
                   if (!regex.hasMatch(value)) {
                     return 'Formato inválido. Use DD/MM/AAAA';
                   }
@@ -261,7 +272,17 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                     _formKey.currentState?.save();
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => MyHomePage()),
+                      MaterialPageRoute(
+                        builder: (context) => MyHomePage(),
+                        settings: RouteSettings(
+                          arguments: {
+                            'nome': nome,
+                            'dataNascimento': dataNascimento,
+                            'genero': genero,
+                            'categoriaFavorita': categoriaFavorita,
+                          },
+                        ),
+                      ),
                     );
                   }
                 },
@@ -282,56 +303,100 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
 }
 
 
-
 class MyHomePage extends StatefulWidget {
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
+
 class _MyHomePageState extends State<MyHomePage> {
-  var selectedindex=0;
+  var selectedindex = 0;
+  bool showNavigationRail = true; // Controle de visibilidade da aba
+
   @override
   Widget build(BuildContext context) {
-  Widget page=Placeholder();
-  switch (selectedindex) {
-  case 0:
-    page = GeneratorPage();
-    break;
-  case 1:
-    page = FavoritesPage();
-    break;
-  
-}
+    Widget page = Placeholder();
+    switch (selectedindex) {
+      case 0:
+        page = GeneratorPage();
+        break;
+      case 1:
+        page = FavoritesPage();
+        break;
+      case 2:
+        page = Profilels();
+    }
 
     return Scaffold(
       body: Row(
         children: [
-          SafeArea(
-            child: NavigationRail(
-              extended: false,
-              destinations: [
-                NavigationRailDestination(
-                  icon: Icon(Icons.home),
-                  label: Text('Home'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.favorite),
-                  label: Text('Favorites'),
-                ),
-              ],
-              selectedIndex: selectedindex,
-              onDestinationSelected: (value) {
-                setState(() {
-                  selectedindex=value;
-                });
-                
-              },
+          if (showNavigationRail)
+            SafeArea(
+              child: Column(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.close), // Ícone para ocultar a aba
+                    onPressed: () {
+                      setState(() {
+                        showNavigationRail = false; // Oculta o NavigationRail
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: NavigationRail(
+                      destinations: [
+                        NavigationRailDestination(
+                          icon: Icon(Icons.home),
+                          label: Text('Home'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.favorite),
+                          label: Text('Favorites'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.person), // Novo ícone para a tela de perfil
+                          label: Text('Perfil'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.search), // Novo ícone para a tela de perfil
+                          label: Text('Jogos'),
+                        ),
+                      ],
+                      selectedIndex: selectedindex,
+                      onDestinationSelected: (value) {
+                        setState(() {
+                          selectedindex = value;
+                        });
+
+                        // Navegar para a tela de perfil
+                       
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
           Expanded(
-            child: Container(
-              color: Theme.of(context).colorScheme.secondaryContainer,
-              child: page,
+            child: Stack(
+              children: [
+                Container(
+                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  child: page,
+                ),
+                if (!showNavigationRail)
+                  Positioned(
+                    top: 56, // Aumentado para descer o botão
+                    left: 16,
+                    child: IconButton(
+                      icon: Icon(Icons.menu), // Ícone para reexibir a aba
+                      onPressed: () {
+                        setState(() {
+                          showNavigationRail = true; // Mostra o NavigationRail
+                        });
+                      },
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -339,6 +404,9 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+
+
+
 
 class GeneratorPage extends StatefulWidget {
   @override
@@ -364,41 +432,43 @@ class _GeneratorPageState extends State<GeneratorPage> {
       icon = Icons.favorite_border;
     }
 
-    return Column(
-      children: [
-        // Barra de pesquisa
-        Container(
-          width: double.infinity,
-          height: 60,
-          padding: EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 188, 185, 225),
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.5),
-                spreadRadius: 1,
-                blurRadius: 5,
-                offset: Offset(0, 3),
-              ),
-            ],
-          ),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Pesquisar par de palavras...',
-              border: InputBorder.none,
-              prefixIcon: Icon(Icons.search),
+    return SafeArea(  // Adiciona SafeArea para garantir que o conteúdo não sobreponha a área de status
+      child: Column(
+        children: [
+          // Barra de pesquisa
+          Container(
+            width: double.infinity,
+            height: 60,
+            padding: EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 188, 185, 225),
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.5),
+                  spreadRadius: 1,
+                  blurRadius: 5,
+                  offset: Offset(0, 3),
+                ),
+              ],
             ),
-            onChanged: (value) {
-              setState(() {
-                searchQuery = value;
-              });
-            },
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Pesquisar par de palavras...',
+                border: InputBorder.none,
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  searchQuery = value;
+                });
+              },
+            ),
           ),
-        ),
-        // Exibir par de palavras ou mensagem
-        PALAVRAS(isVisible: isVisible, pair: pair, appState: appState, icon: icon),
-      ],
+          // Exibir par de palavras ou mensagem
+          PALAVRAS(isVisible: isVisible, pair: pair, appState: appState, icon: icon),
+        ],
+      ),
     );
   }
 }
@@ -500,60 +570,226 @@ class _FavoritesPageState extends State<FavoritesPage> {
         .where((pair) => pair.asLowerCase.contains(searchQuery.toLowerCase()))
         .toList();
 
-    return Column(
-      children: [
-        // Barra de pesquisa
-        Container( width: double.infinity, // Ocupa toda a largura disponível
-                   height: 60, // Define a altura
-                   padding: EdgeInsets.symmetric(horizontal: 10),
-                   decoration: BoxDecoration(
-                         color: const Color.fromARGB(255, 188, 185, 225),
-                         borderRadius: BorderRadius.circular(15),
-                         boxShadow: [
-                           BoxShadow(
-                                 color: Colors.grey.withOpacity(0.5),
-                                 spreadRadius: 1,
-                                 blurRadius: 5,
-                                 offset: Offset(0, 3), // Sombra com deslocamento
-                              ),
-                            ],
-                          ),
-          
-         
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Pesquisar favoritos...',
-              border: InputBorder.none,
-              prefixIcon: Icon(Icons.search),
+    return SafeArea( // Adiciona SafeArea para garantir que o conteúdo não sobreponha a área de status
+      child: Column(
+        children: [
+          // Barra de pesquisa
+          Container(
+            width: double.infinity, // Ocupa toda a largura disponível
+            height: 60, // Define a altura
+            padding: EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 188, 185, 225),
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.5),
+                  spreadRadius: 1,
+                  blurRadius: 5,
+                  offset: Offset(0, 3), // Sombra com deslocamento
+                ),
+              ],
             ),
-            onChanged: (value) {
-              setState(() {
-                searchQuery = value;
-              });
-            },
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Pesquisar favoritos...',
+                border: InputBorder.none,
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  searchQuery = value;
+                });
+              },
+            ),
+          ),
+          // Lista de favoritos
+          Expanded(
+            child: filteredFavorites.isEmpty
+                ? Center(
+                    child: Text('Nenhum favorito encontrado.'),
+                  )
+                : ListView(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Text('Você tem ${filteredFavorites.length} favoritos:'),
+                      ),
+                      for (var pair in filteredFavorites)
+                        Dismissible(
+                          key: Key(pair.asLowerCase), // A chave deve ser única para cada item
+                          direction: DismissDirection.endToStart, // Direção do swipe
+                          onDismissed: (direction) {
+                            // Remover o favorito da lista
+                            appState.removeFavorite(pair); // Remover o favorito
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('${pair.asLowerCase} removido!')),
+                            );
+                          },
+                          background: Container(
+                            color: Colors.red, // Cor do fundo ao deslizar
+                            alignment: Alignment.centerRight,
+                            padding: EdgeInsets.symmetric(horizontal: 20),
+                            child: Icon(
+                              Icons.delete,
+                              color: Colors.white,
+                            ),
+                          ),
+                          child: ListTile(
+                            leading: Icon(Icons.favorite),
+                            title: Text(pair.asLowerCase),
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+
+class Profilels extends StatelessWidget {
+  final Color green = Color.fromARGB(255, 188, 185, 225);
+  final String url ="https://cdn-2.worldwebs.com/assets/images/f/ed0b52349d39d39d5693cac6bb0cc06f.jpeg?666490501";
+  final String urls="https://cdn.akamai.steamstatic.com/steam/apps/346560/header.jpg?t=1635411355";
+  final String urlc="https://cdn.akamai.steamstatic.com/steam/apps/1026420/header.jpg?t=1657716289";
+  
+
+  @override
+  Widget build(BuildContext context) {
+    final arguments = ModalRoute.of(context)?.settings.arguments as Map?;
+    final nome = arguments?['nome'] ?? 'Nome não informado';
+    final dataNascimento =
+        arguments?['dataNascimento'] ?? 'Data não informada';
+    final genero = arguments?['genero'] ?? 'Gênero não informado';
+    final categoriaFavorita =
+        arguments?['categoriaFavorita'] ?? 'Categoria não informada';
+
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Color.fromARGB(255, 188, 185, 225),
+        flexibleSpace: Center(
+          child: Text(
+            "Perfil",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ),
-        // Lista de favoritos
-        Expanded(
-          child: filteredFavorites.isEmpty
-              ? Center(
-                  child: Text('Nenhum favorito encontrado.'),
-                )
-              : ListView(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Text('Você tem ${filteredFavorites.length} favoritos:'),
-                    ),
-                    for (var pair in filteredFavorites)
-                      ListTile(
-                        leading: Icon(Icons.favorite),
-                        title: Text(pair.asLowerCase),
-                      ),
-                  ],
+      ),
+      body: SafeArea( // Adiciona SafeArea para garantir que o conteúdo não sobreponha áreas de sistema
+        child: Column(
+          children: <Widget>[
+            Container(
+              padding: EdgeInsets.only(top: 24),
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.height / 2,
+              decoration: BoxDecoration(
+                color: green,
+                borderRadius: BorderRadius.only(
+                  bottomRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
                 ),
+              ),
+              child: Column(
+                children: <Widget>[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      CircleAvatar(
+                        radius: 60, // Tamanho da imagem redonda
+                        backgroundImage: NetworkImage(url),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    "ID: 434534",
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16, bottom: 32),
+                    child: Text(
+                      nome,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20, right: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        Column(
+                          children: <Widget>[
+                            Icon(
+                              Icons.calendar_today_outlined,
+                              color: Colors.white,
+                            ),
+                            Text(dataNascimento,
+                                style: TextStyle(color: Colors.white)),
+                          ],
+                        ),
+                        Column(
+                          children: <Widget>[
+                            Icon(
+                              Icons.games,
+                              color: Colors.white,
+                            ),
+                            Text(genero, style: TextStyle(color: Colors.white)),
+                          ],
+                        ),
+                        Column(
+                          children: <Widget>[
+                            Icon(
+                              Icons.category,
+                              color: Colors.white,
+                            ),
+                            Text(categoriaFavorita,
+                                style: TextStyle(color: Colors.white)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+             Container(
+              
+                    child: Column(
+                      children: <Widget> [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: <Widget>[
+                            Column(
+                              children:<Widget> [
+                              Image(image: NetworkImage(urlc),width:150 ,height:150 ,)
+
+                              ],
+                            ),
+                             Column(
+                              children:<Widget> [
+                              Image(image: NetworkImage(urls),width:150 ,height:150 ,)
+                              ],
+                             ),
+                           
+                          ],
+                     
+                          
+                        ),
+                      ],
+                    ),
+                    
+                  )
+                ],
         ),
-      ],
+      ),
     );
   }
 }

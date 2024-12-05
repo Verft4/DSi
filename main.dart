@@ -50,111 +50,143 @@ class MyAppState extends ChangeNotifier {
     }
     notifyListeners();
   }
-
-  // Método para remover um favorito da lista
-  void removeFavorite(WordPair pair) {
-    favorites.remove(pair);
-    notifyListeners();
-  }
 }
 
+// Tela de Login
+// Tela de Login
 
-// Tela de Login
-// Tela de Login
 class LoginPage extends StatelessWidget {
-  final _formKey = GlobalKey<FormState>(); // Definindo uma chave para o formulário
+  final _formKey = GlobalKey<FormState>(); // Chave para o formulário
+  final imagebookshelf = "https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Login'),
-        backgroundColor: Theme.of(context).colorScheme.primaryFixed,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Form( // Usando o Form para validar os campos
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,  // Alinha o conteúdo mais para o topo
-            children: [
-              SizedBox(height: 50), // Ajuste o valor para mais ou menos conforme necessário
-              Text(
-                'Game Library',  // Alterando o texto aqui
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              SizedBox(height: 20),
-              
-              // Campo Email
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
+      backgroundColor: Color.fromARGB(255, 188, 185, 225),
+      body: Column(
+        children: [
+          // Cabeçalho com título e imagem
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Container(
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.height * 0.3,
+              decoration: BoxDecoration(color: Color.fromARGB(255, 188, 185, 225)),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "GAME LIBRARY",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                validator: (value) {
-                  // Validação do campo de email
-                  if (value == null || value.isEmpty) {
-                    return 'Informe o email';
-                  }
-                  final RegExp regex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-                  if (!regex.hasMatch(value)) {
-                    return 'Informe um email válido';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 20),
-
-              // Campo Senha
-              TextFormField(
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Senha',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
+                  SizedBox(height: 10),
+                  Image.network(
+                    imagebookshelf,
+                    width: 150,
+                    height: 150,
+                    colorBlendMode: BlendMode.modulate,
+                    color: Color.fromARGB(255, 193, 190, 227),
                   ),
-                ),
-                textInputAction: TextInputAction.done,
-                validator: (value) {
-                  // Validação do campo de senha
-                  if (value == null || value.isEmpty) {
-                    return 'Informe a senha';
-                  }
-                  return null;
-                },
+                ],
               ),
-              SizedBox(height: 20),
-
-              // Botão Entrar
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState?.validate() ?? false) {
-                    // Se o formulário for válido, navega para a próxima tela
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => ProfileCreationPage()),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                ),
-                child: Text('Entrar'),
-              ),
-            ],
+            ),
           ),
-        ),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(70)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Bem-vindo!',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.black),
+                      ),
+                      SizedBox(height: 20),
+
+                      // Campo Email
+                      TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Informe o email';
+                          }
+                          final RegExp regex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                          if (!regex.hasMatch(value)) {
+                            return 'Informe um email válido';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 20),
+
+                      // Campo Senha
+                      TextFormField(
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Senha',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        textInputAction: TextInputAction.done,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Informe a senha';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 20),
+
+                      // Botão Entrar
+                      ElevatedButton(
+                        onPressed: () {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            // Se o formulário for válido, navega para a próxima tela
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => ProfileCreationPage()),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                        ),
+                        child: Text('Entrar'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
+
 
 
 
@@ -358,7 +390,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           label: Text('Perfil'),
                         ),
                         NavigationRailDestination(
-                          icon: Icon(Icons.search), // Novo ícone para a tela de perfil
+                          icon: Icon(Icons.search_off), // Novo ícone para a tela de perfil
                           label: Text('Jogos'),
                         ),
                       ],
@@ -432,43 +464,41 @@ class _GeneratorPageState extends State<GeneratorPage> {
       icon = Icons.favorite_border;
     }
 
-    return SafeArea(  // Adiciona SafeArea para garantir que o conteúdo não sobreponha a área de status
-      child: Column(
-        children: [
-          // Barra de pesquisa
-          Container(
-            width: double.infinity,
-            height: 60,
-            padding: EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 188, 185, 225),
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.5),
-                  spreadRadius: 1,
-                  blurRadius: 5,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Pesquisar par de palavras...',
-                border: InputBorder.none,
-                prefixIcon: Icon(Icons.search),
+    return Column(
+      children: [
+        // Barra de pesquisa
+        Container(
+          width: double.infinity,
+          height: 60,
+          padding: EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(255, 188, 185, 225),
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.5),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: Offset(0, 3),
               ),
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value;
-                });
-              },
-            ),
+            ],
           ),
-          // Exibir par de palavras ou mensagem
-          PALAVRAS(isVisible: isVisible, pair: pair, appState: appState, icon: icon),
-        ],
-      ),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Pesquisar par de palavras...',
+              border: InputBorder.none,
+              prefixIcon: Icon(Icons.search),
+            ),
+            onChanged: (value) {
+              setState(() {
+                searchQuery = value;
+              });
+            },
+          ),
+        ),
+        // Exibir par de palavras ou mensagem
+        PALAVRAS(isVisible: isVisible, pair: pair, appState: appState, icon: icon),
+      ],
     );
   }
 }
@@ -570,78 +600,212 @@ class _FavoritesPageState extends State<FavoritesPage> {
         .where((pair) => pair.asLowerCase.contains(searchQuery.toLowerCase()))
         .toList();
 
-    return SafeArea( // Adiciona SafeArea para garantir que o conteúdo não sobreponha a área de status
-      child: Column(
-        children: [
-          // Barra de pesquisa
-          Container(
-            width: double.infinity, // Ocupa toda a largura disponível
-            height: 60, // Define a altura
-            padding: EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 188, 185, 225),
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.5),
-                  spreadRadius: 1,
-                  blurRadius: 5,
-                  offset: Offset(0, 3), // Sombra com deslocamento
-                ),
-              ],
+    return Column(
+      children: [
+        // Barra de pesquisa
+        Container( width: double.infinity, // Ocupa toda a largura disponível
+                   height: 60, // Define a altura
+                   padding: EdgeInsets.symmetric(horizontal: 10),
+                   decoration: BoxDecoration(
+                         color: const Color.fromARGB(255, 188, 185, 225),
+                         borderRadius: BorderRadius.circular(15),
+                         boxShadow: [
+                           BoxShadow(
+                                 color: Colors.grey.withOpacity(0.5),
+                                 spreadRadius: 1,
+                                 blurRadius: 5,
+                                 offset: Offset(0, 3), // Sombra com deslocamento
+                              ),
+                            ],
+                          ),
+          
+         
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Pesquisar favoritos...',
+              border: InputBorder.none,
+              prefixIcon: Icon(Icons.search),
             ),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Pesquisar favoritos...',
-                border: InputBorder.none,
-                prefixIcon: Icon(Icons.search),
+            onChanged: (value) {
+              setState(() {
+                searchQuery = value;
+              });
+            },
+          ),
+        ),
+        // Lista de favoritos
+        Expanded(
+          child: filteredFavorites.isEmpty
+              ? Center(
+                  child: Text('Nenhum favorito encontrado.'),
+                )
+              : ListView(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text('Você tem ${filteredFavorites.length} favoritos:'),
+                    ),
+                    for (var pair in filteredFavorites)
+                      ListTile(
+                        leading: Icon(Icons.favorite),
+                        title: Text(pair.asLowerCase),
+                      ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+
+
+class Profilels extends StatelessWidget{
+  final Color green =Color.fromARGB(255, 188, 185, 225);
+  final String url ="https://cdn-2.worldwebs.com/assets/images/f/ed0b52349d39d39d5693cac6bb0cc06f.jpeg?666490501";
+ 
+  @override
+  
+  Widget build(BuildContext context){
+    final arguments = ModalRoute.of(context)?.settings.arguments as Map?;
+    final nome = arguments?['nome'] ?? 'Nome não informado';
+    final dataNascimento = arguments?['dataNascimento'] ?? 'Data não informada';
+    final genero = arguments?['genero'] ?? 'Gênero não informado';
+    final categoriaFavorita = arguments?['categoriaFavorita'] ?? 'Categoria não informada';
+    return Scaffold(
+      appBar: AppBar(
+        
+        
+        elevation: 0,
+        backgroundColor: Color.fromARGB(255, 188, 185, 225),
+        flexibleSpace: Center(
+          child: Text("Perfil",style: TextStyle(fontSize: 20,fontWeight: FontWeight.bold),),
+        ),
+      ),
+      body: Column(
+        children: <Widget>[
+          Container(
+            padding: EdgeInsets.only(top:24),
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height/2,
+            decoration: BoxDecoration(
+              color: green,
+              borderRadius: BorderRadius.only(
+                bottomRight: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+                
+              )
+              
+          ),
+          child: Column(
+            children:<Widget> [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                 CircleAvatar(
+                      radius: 60, // Tamanho da imagem redonda
+                      backgroundImage: NetworkImage(url),
+                    ),
+
+                  
+                ],
+               ),
+               Text("ID: 434534",style: TextStyle(color: Colors.white70,)),
+               Padding(
+                 padding: const EdgeInsets.only(top: 16,bottom: 32),
+                 child: Text(nome,style: TextStyle(color: Colors.white,fontSize: 24,fontWeight:FontWeight.bold )),
+               ),
+               Padding(
+                 padding: const EdgeInsets.only(left: 20,right: 20),
+                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: <Widget>[
+                    Column(
+                      children: <Widget>[
+                        Icon(Icons.calendar_today_outlined,color: Colors.white,),
+                        Text(dataNascimento,style: TextStyle(color: Colors.white)),
+                      ]
+                      
+                 
+                    ),
+                    Column(
+                      children: <Widget>[
+                        Icon(Icons.games,color: Colors.white,),
+                        Text(genero,style: TextStyle(color: Colors.white)),
+                      ]
+                      
+                 
+                    ),
+                    Column(
+                      children: <Widget>[
+                        Icon(Icons.category,color: Colors.white,),
+                        Text(categoriaFavorita,style: TextStyle(color: Colors.white)),
+                      ]
+                      
+                 
+                    ),
+                    
+                   
+                  ],
+                 ),
+               )
+            ],
+          ),
+          ),
+        ],
+      ),
+    );
+    
+
+  }
+}
+//usar essa tela para fazer outra (tela de recriação de senha)
+class Login extends StatefulWidget{
+  @override
+  State<Login> createState() =>_LoginState();
+}
+class _LoginState extends State<Login>{
+  final imagebookshelf="https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
+  @override
+  
+  
+  Widget build(BuildContext context){
+    return Scaffold(backgroundColor: Color.fromARGB(255, 188, 185, 225),
+    body: Column(
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height*.3,
+            decoration: BoxDecoration(color: Color.fromARGB(255, 188, 185, 225)),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                
+                children:<Widget> [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children:<Widget> [
+              Text("GAME LIBRARY",style: TextStyle(color: Colors.white,
+              fontSize: 30,fontWeight: FontWeight.bold),
               ),
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value;
-                });
-              },
+              Image(image:NetworkImage(imagebookshelf),width:150 ,height:150,colorBlendMode: BlendMode.modulate,color: Color.fromARGB(255, 193, 190, 227),)
+              
+              
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          // Lista de favoritos
-          Expanded(
-            child: filteredFavorites.isEmpty
-                ? Center(
-                    child: Text('Nenhum favorito encontrado.'),
-                  )
-                : ListView(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Text('Você tem ${filteredFavorites.length} favoritos:'),
-                      ),
-                      for (var pair in filteredFavorites)
-                        Dismissible(
-                          key: Key(pair.asLowerCase), // A chave deve ser única para cada item
-                          direction: DismissDirection.endToStart, // Direção do swipe
-                          onDismissed: (direction) {
-                            // Remover o favorito da lista
-                            appState.removeFavorite(pair); // Remover o favorito
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('${pair.asLowerCase} removido!')),
-                            );
-                          },
-                          background: Container(
-                            color: Colors.red, // Cor do fundo ao deslizar
-                            alignment: Alignment.centerRight,
-                            padding: EdgeInsets.symmetric(horizontal: 20),
-                            child: Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                            ),
-                          ),
-                          child: ListTile(
-                            leading: Icon(Icons.favorite),
-                            title: Text(pair.asLowerCase),
-                          ),
-                        ),
-                    ],
-                  ),
+          
+     Expanded(child:Container(
+      decoration: BoxDecoration(color: Colors.white,
+      borderRadius: BorderRadius.only(topLeft: Radius.circular(70))),
+            ) 
           ),
         ],
       ),
@@ -651,145 +815,3 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
 
 
-
-class Profilels extends StatelessWidget {
-  final Color green = Color.fromARGB(255, 188, 185, 225);
-  final String url ="https://cdn-2.worldwebs.com/assets/images/f/ed0b52349d39d39d5693cac6bb0cc06f.jpeg?666490501";
-  final String urls="https://cdn.akamai.steamstatic.com/steam/apps/346560/header.jpg?t=1635411355";
-  final String urlc="https://cdn.akamai.steamstatic.com/steam/apps/1026420/header.jpg?t=1657716289";
-  
-
-  @override
-  Widget build(BuildContext context) {
-    final arguments = ModalRoute.of(context)?.settings.arguments as Map?;
-    final nome = arguments?['nome'] ?? 'Nome não informado';
-    final dataNascimento =
-        arguments?['dataNascimento'] ?? 'Data não informada';
-    final genero = arguments?['genero'] ?? 'Gênero não informado';
-    final categoriaFavorita =
-        arguments?['categoriaFavorita'] ?? 'Categoria não informada';
-
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Color.fromARGB(255, 188, 185, 225),
-        flexibleSpace: Center(
-          child: Text(
-            "Perfil",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-        ),
-      ),
-      body: SafeArea( // Adiciona SafeArea para garantir que o conteúdo não sobreponha áreas de sistema
-        child: Column(
-          children: <Widget>[
-            Container(
-              padding: EdgeInsets.only(top: 24),
-              width: MediaQuery.of(context).size.width,
-              height: MediaQuery.of(context).size.height / 2,
-              decoration: BoxDecoration(
-                color: green,
-                borderRadius: BorderRadius.only(
-                  bottomRight: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
-                ),
-              ),
-              child: Column(
-                children: <Widget>[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      CircleAvatar(
-                        radius: 60, // Tamanho da imagem redonda
-                        backgroundImage: NetworkImage(url),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    "ID: 434534",
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16, bottom: 32),
-                    child: Text(
-                      nome,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: <Widget>[
-                        Column(
-                          children: <Widget>[
-                            Icon(
-                              Icons.calendar_today_outlined,
-                              color: Colors.white,
-                            ),
-                            Text(dataNascimento,
-                                style: TextStyle(color: Colors.white)),
-                          ],
-                        ),
-                        Column(
-                          children: <Widget>[
-                            Icon(
-                              Icons.games,
-                              color: Colors.white,
-                            ),
-                            Text(genero, style: TextStyle(color: Colors.white)),
-                          ],
-                        ),
-                        Column(
-                          children: <Widget>[
-                            Icon(
-                              Icons.category,
-                              color: Colors.white,
-                            ),
-                            Text(categoriaFavorita,
-                                style: TextStyle(color: Colors.white)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-             Container(
-              
-                    child: Column(
-                      children: <Widget> [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: <Widget>[
-                            Column(
-                              children:<Widget> [
-                              Image(image: NetworkImage(urlc),width:150 ,height:150 ,)
-
-                              ],
-                            ),
-                             Column(
-                              children:<Widget> [
-                              Image(image: NetworkImage(urls),width:150 ,height:150 ,)
-                              ],
-                             ),
-                           
-                          ],
-                     
-                          
-                        ),
-                      ],
-                    ),
-                    
-                  )
-                ],
-        ),
-      ),
-    );
-  }
-}

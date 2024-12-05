@@ -1,5 +1,5 @@
-Essa  branch é para desenvolver fora do main
-As adições começaram a partir do main
+
+As adições começaram a partir do codigo do main
 
 
 Adição 0.1

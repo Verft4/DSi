@@ -55,6 +55,8 @@ class MyAppState extends ChangeNotifier {
 // Tela de Login
 // Tela de Login
 
+
+
 class LoginPage extends StatelessWidget {
   final _formKey = GlobalKey<FormState>(); // Chave para o formulário
   final imagebookshelf = "https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
@@ -63,40 +65,40 @@ class LoginPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color.fromARGB(255, 188, 185, 225),
-      body: Column(
-        children: [
-          // Cabeçalho com título e imagem
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Container(
-              width: MediaQuery.of(context).size.width,
-              height: MediaQuery.of(context).size.height * 0.3,
-              decoration: BoxDecoration(color: Color.fromARGB(255, 188, 185, 225)),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "GAME LIBRARY",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Cabeçalho com título e imagem
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height * 0.3,
+                decoration: BoxDecoration(color: Color.fromARGB(255, 188, 185, 225)),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "GAME LIBRARY",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 10),
-                  Image.network(
-                    imagebookshelf,
-                    width: 150,
-                    height: 150,
-                    colorBlendMode: BlendMode.modulate,
-                    color: Color.fromARGB(255, 193, 190, 227),
-                  ),
-                ],
+                    SizedBox(height: 10),
+                    Image.network(
+                      imagebookshelf,
+                      width: 150,
+                      height: 150,
+                      colorBlendMode: BlendMode.modulate,
+                      color: Color.fromARGB(255, 193, 190, 227),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: Container(
+            Container(
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(topLeft: Radius.circular(70)),
@@ -175,17 +177,51 @@ class LoginPage extends StatelessWidget {
                         ),
                         child: Text('Entrar'),
                       ),
+                      SizedBox(height: 20),
+
+                      // Texto clicável "Esqueceu a senha?"
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => SenhaPage()),
+                          );
+                        },
+                        child: Text(
+                          'Esqueceu a senha?',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => CadastroPage()),
+                          );
+                        },
+                        child: Text(
+                          'Entrar?',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
+
 
 
 
@@ -209,124 +245,126 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
         title: Text('Criar Perfil'),
         backgroundColor: Theme.of(context).colorScheme.primaryFixed,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              // Campo Nome
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Nome',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                // Campo Nome
+                TextFormField(
+                  decoration: InputDecoration(
+                    labelText: 'Nome',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
+                  onSaved: (value) {
+                    nome = value;
+                  },
                 ),
-                onSaved: (value) {
-                  nome = value;
-                },
-              ),
-              SizedBox(height: 20),
+                SizedBox(height: 20),
 
-              // Campo Data de Nascimento
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Data de Nascimento (DD/MM/AAAA)',
-                  hintText: 'Exemplo: 25/11/1995',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
+                // Campo Data de Nascimento
+                TextFormField(
+                  decoration: InputDecoration(
+                    labelText: 'Data de Nascimento (DD/MM/AAAA)',
+                    hintText: 'Exemplo: 25/11/1995',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
+                  onSaved: (value) {
+                    dataNascimento = value;
+                  },
+                  keyboardType: TextInputType.datetime,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Informe a data de nascimento';
+                    }
+                    final regex = RegExp(r'^\d{2}/\d{2}/\d{4}$');
+                    if (!regex.hasMatch(value)) {
+                      return 'Formato inválido. Use DD/MM/AAAA';
+                    }
+                    return null;
+                  },
                 ),
-                onSaved: (value) {
-                  dataNascimento = value;
-                },
-                keyboardType: TextInputType.datetime,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Informe a data de nascimento';
-                  }
-                  final regex = RegExp(r'^\d{2}/\d{2}/\d{4}$');
-                  if (!regex.hasMatch(value)) {
-                    return 'Formato inválido. Use DD/MM/AAAA';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 20),
+                SizedBox(height: 20),
 
-              // Campo Gênero de Jogos
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'Gênero de Jogos Favorito',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
+                // Campo Gênero de Jogos
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    labelText: 'Gênero de Jogos Favorito',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
-                ),
-                items: [
-                  'Ação',
-                  'Aventura',
-                  'RPG',
-                  'Estratégia',
-                  'Esportes'
-                ].map((genero) {
-                  return DropdownMenuItem(
-                    value: genero,
-                    child: Text(genero),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    genero = value;
-                  });
-                },
-              ),
-              SizedBox(height: 20),
-
-              // Campo Categoria Favorita
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Categoria Favorita',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-                onSaved: (value) {
-                  categoriaFavorita = value;
-                },
-              ),
-              SizedBox(height: 20),
-
-              // Botão Salvar e Continuar
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    _formKey.currentState?.save();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MyHomePage(),
-                        settings: RouteSettings(
-                          arguments: {
-                            'nome': nome,
-                            'dataNascimento': dataNascimento,
-                            'genero': genero,
-                            'categoriaFavorita': categoriaFavorita,
-                          },
-                        ),
-                      ),
+                  items: [
+                    'Ação',
+                    'Aventura',
+                    'RPG',
+                    'Estratégia',
+                    'Esportes'
+                  ].map((genero) {
+                    return DropdownMenuItem(
+                      value: genero,
+                      child: Text(genero),
                     );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      genero = value;
+                    });
+                  },
                 ),
-                child: Text('Salvar e Continuar'),
-              ),
-            ],
+                SizedBox(height: 20),
+
+                // Campo Categoria Favorita
+                TextFormField(
+                  decoration: InputDecoration(
+                    labelText: 'Categoria Favorita',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  onSaved: (value) {
+                    categoriaFavorita = value;
+                  },
+                ),
+                SizedBox(height: 20),
+
+                // Botão Salvar e Continuar
+                ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      _formKey.currentState?.save();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MyHomePage(),
+                          settings: RouteSettings(
+                            arguments: {
+                              'nome': nome,
+                              'dataNascimento': dataNascimento,
+                              'genero': genero,
+                              'categoriaFavorita': categoriaFavorita,
+                            },
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                  ),
+                  child: Text('Salvar e Continuar'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -357,6 +395,9 @@ class _MyHomePageState extends State<MyHomePage> {
         break;
       case 2:
         page = Profilels();
+        break;
+      case 3:
+        page= NotesPage();
     }
 
     return Scaffold(
@@ -390,7 +431,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           label: Text('Perfil'),
                         ),
                         NavigationRailDestination(
-                          icon: Icon(Icons.search_off), // Novo ícone para a tela de perfil
+                          icon: Icon(Icons.note_alt_rounded), // Novo ícone para a tela de perfil
                           label: Text('Jogos'),
                         ),
                       ],
@@ -759,55 +800,159 @@ class Profilels extends StatelessWidget{
 
   }
 }
-//usar essa tela para fazer outra (tela de recriação de senha)
-class Login extends StatefulWidget{
+
+class SenhaPage extends StatelessWidget {
+  final _formKey = GlobalKey<FormState>(); // Chave para o formulário
+  final _senhaController = TextEditingController(); // Controlador para o campo de senha
+  final imagebookshelf = "https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
+
   @override
-  State<Login> createState() =>_LoginState();
-}
-class _LoginState extends State<Login>{
-  final imagebookshelf="https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
-  @override
-  
-  
-  Widget build(BuildContext context){
-    return Scaffold(backgroundColor: Color.fromARGB(255, 188, 185, 225),
-    body: Column(
-      children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Container(
-            width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height*.3,
-            decoration: BoxDecoration(color: Color.fromARGB(255, 188, 185, 225)),
-            child: Padding(
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Color.fromARGB(255, 188, 185, 225),
+      body: SingleChildScrollView( // Tornar a tela rolável
+        child: Column(
+          children: <Widget>[
+            // Cabeçalho com título e imagem
+            Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                
-                children:<Widget> [
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children:<Widget> [
-              Text("GAME LIBRARY",style: TextStyle(color: Colors.white,
-              fontSize: 30,fontWeight: FontWeight.bold),
-              ),
-              Image(image:NetworkImage(imagebookshelf),width:150 ,height:150,colorBlendMode: BlendMode.modulate,color: Color.fromARGB(255, 193, 190, 227),)
-              
-              
-                      ],
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height * 0.3,
+                decoration: BoxDecoration(
+                  color: Color.fromARGB(255, 188, 185, 225),
+                  borderRadius: BorderRadius.only(bottomLeft: Radius.circular(40), bottomRight: Radius.circular(40)),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "GAME LIBRARY",
+                      style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold),
+                    ),
+                    Image.network(
+                      imagebookshelf,
+                      width: 150,
+                      height: 150,
+                      colorBlendMode: BlendMode.modulate,
+                      color: Color.fromARGB(255, 193, 190, 227),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-          
-     Expanded(child:Container(
-      decoration: BoxDecoration(color: Colors.white,
-      borderRadius: BorderRadius.only(topLeft: Radius.circular(70))),
-            ) 
-          ),
-        ],
+            // Corpo da página
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(70)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Recuperação de Senha',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.black),
+                      ),
+                      SizedBox(height: 20),
+
+                      // Campo Email
+                      TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Informe o email';
+                          }
+                          final RegExp regex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                          if (!regex.hasMatch(value)) {
+                            return 'Informe um email válido';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 20),
+
+                      // Campo Nova Senha
+                      TextFormField(
+                        obscureText: true,
+                        controller: _senhaController, // Controlador do campo de senha
+                        decoration: InputDecoration(
+                          labelText: 'Nova Senha',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        textInputAction: TextInputAction.next,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Informe a nova senha';
+                          }
+                          if (value.length < 6) {
+                            return 'A senha deve ter pelo menos 6 caracteres';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 20),
+
+                      // Campo Confirmar Senha
+                      TextFormField(
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Confirmar Senha',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Confirme sua senha';
+                          }
+                          if (value != _senhaController.text) {
+                            return 'As senhas não coincidem';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 20),
+
+                      // Botão Confirmar
+                      ElevatedButton(
+                        onPressed: () {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            // Exemplo: ação ao confirmar
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Senha alterada com sucesso!')),
+                            );
+                            Navigator.pop(context); // Voltar para a tela anterior
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                        ),
+                        child: Text('Confirmar'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -815,3 +960,352 @@ class _LoginState extends State<Login>{
 
 
 
+
+class CadastroPage extends StatelessWidget {
+  final _formKey = GlobalKey<FormState>(); // Chave para o formulário
+  final imagebookshelf = "https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Color.fromARGB(255, 188, 185, 225),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Cabeçalho com título e imagem
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height * 0.3,
+                decoration: BoxDecoration(color: Color.fromARGB(255, 188, 185, 225)),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "GAME LIBRARY",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Image.network(
+                      imagebookshelf,
+                      width: 150,
+                      height: 150,
+                      colorBlendMode: BlendMode.modulate,
+                      color: Color.fromARGB(255, 193, 190, 227),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(70)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Crie sua conta!',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.black),
+                      ),
+                      SizedBox(height: 20),
+
+                      // Campo Email
+                      TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Informe o email';
+                          }
+                          final RegExp regex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                          if (!regex.hasMatch(value)) {
+                            return 'Informe um email válido';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 20),
+
+                      // Campo Senha
+                      TextFormField(
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Senha',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        textInputAction: TextInputAction.done,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Informe a senha';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 20),
+
+                      // Botão Cadastrar
+                      ElevatedButton(
+                        onPressed: () {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            // Se o formulário for válido, navega para a próxima tela
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => LoginPage()), // Altere para a página de perfil ou outra página de destino
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                        ),
+                        child: Text('Cadastrar'),
+                      ),
+                      SizedBox(height: 20),
+
+                      // Texto clicável "Já tem uma conta?"
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context); // Volta para a tela de login
+                        },
+                        child: Text(
+                          'Já tem uma conta? Entrar',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+
+
+
+
+
+class Note {
+  String title;
+  String content;
+  DateTime creationDate;
+
+  Note({
+    required this.title,
+    required this.content,
+    required this.creationDate,
+  });
+}
+
+class NotesPage extends StatefulWidget {
+  @override
+  State<NotesPage> createState() => _NotesPageState();
+}
+
+class _NotesPageState extends State<NotesPage> {
+  List<Note> notes = [];
+  String searchQuery = '';
+  TextEditingController titleController = TextEditingController();
+  TextEditingController contentController = TextEditingController();
+
+  void addNote() {
+    if (titleController.text.isNotEmpty && contentController.text.isNotEmpty) {
+      setState(() {
+        notes.add(Note(
+          title: titleController.text,
+          content: contentController.text,
+          creationDate: DateTime.now(),
+        ));
+      });
+      titleController.clear();
+      contentController.clear();
+    }
+  }
+
+  void editNote(int index) {
+    setState(() {
+      titleController.text = notes[index].title;
+      contentController.text = notes[index].content;
+    });
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Editar Nota'),
+          content: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(labelText: 'Título'),
+              ),
+              SizedBox(height: 8),
+              TextField(
+                controller: contentController,
+                maxLines: 4,
+                decoration: InputDecoration(labelText: 'Conteúdo'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  notes[index].title = titleController.text;
+                  notes[index].content = contentController.text;
+                });
+                Navigator.pop(context);
+              },
+              child: Text('Salvar'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text('Cancelar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Filtra as notas com base na pesquisa
+    var filteredNotes = notes.where((note) {
+      return note.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
+          note.content.toLowerCase().contains(searchQuery.toLowerCase());
+    }).toList();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Notas'),
+        backgroundColor: Color.fromARGB(255, 188, 185, 225),
+      ),
+      body: Column(
+        children: [
+          // Barra de pesquisa com estilo similar ao GeneratorPage
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Container(
+              width: double.infinity,
+              height: 60,
+              padding: EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 188, 185, 225),
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color.fromARGB(255, 123, 115, 115).withOpacity(0.5),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Pesquisar Notas...',
+                  border: InputBorder.none,
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    searchQuery = value;
+                  });
+                },
+              ),
+            ),
+          ),
+          
+          // Lista de notas filtradas
+          Expanded(
+            child: ListView.builder(
+              itemCount: filteredNotes.length,
+              itemBuilder: (context, index) {
+                final note = filteredNotes[index];
+                // Ajuste para exibir no máximo os primeiros 30 caracteres
+                String previewContent = note.content.length > 30
+                    ? '${note.content.substring(0, 30)}...'
+                    : note.content;
+                return ListTile(
+                  title: Text(note.title),
+                  subtitle: Text(
+                    '$previewContent | ${note.creationDate.toLocal()}',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => editNote(index), // Chama a função de editar ao clicar
+                );
+              },
+            ),
+          ),
+
+          // Formulário para adicionar nova nota
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Título da Nota',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 8),
+                TextField(
+                  controller: contentController,
+                  maxLines: 4,
+                  decoration: InputDecoration(labelText: 'Conteúdo da Nota'),
+                ),
+                SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: addNote,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color.fromARGB(255, 188, 185, 225) // Cor do botão
+                  ),
+                  child: Text('Adicionar Nota',style: TextStyle(color: Colors.black),),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -6,3 +6,8 @@ Adição 0.1
 
 remodelação da login page ,
 adição de uma nova tela(Provavel tela de refazer senha )
+
+
+Adição 0.2
+
+criação de 3 telas (senha,cadastro e notas)

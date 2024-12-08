@@ -10,4 +10,4 @@ adição de uma nova tela(Provavel tela de refazer senha )
 
 Adição 0.2
 
-criação de 3 telas (senha,cadastro e notas)
+criação de 3 telas (recriação de senha,cadastro e notas)

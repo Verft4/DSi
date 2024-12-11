@@ -30,9 +30,18 @@ class MyApp extends StatelessWidget {
         title: 'Namer App',
         theme: ThemeData(
           useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 31, 81, 157)),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color.fromARGB(255, 31, 81, 157),
+          ),
         ),
-        home: LoginPage(), // A aplicação começa na tela de login
+        initialRoute: '/login', // Define a rota inicial
+        routes: {
+          '/login': (context) => LoginPage(),
+          '/cadastro': (context) => CadastroPage(),
+          '/home': (context) => MyHomePage(),
+          '/criacao': (context)=>ProfileCreationPage(),
+          '/reset':(context)=>SenhaPage(),
+        },
       ),
     );
   }
@@ -60,17 +69,41 @@ class MyAppState extends ChangeNotifier {
 
 // Tela de Login
 // Tela de Login
+// Importações necessárias
+// Classe para interagir com o Firebase
 
 
+class AuthService {
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+
+  Future<String?> cadastrarUsuario(String email, String senha) async {
+    try {
+      await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: senha,
+      );
+      return null; // Retorna null se o cadastro for bem-sucedido
+    } catch (e) {
+      return e.toString(); // Retorna o erro como string
+    }
+  }
+}
 
 
+// Tela de Cadastro
 
-class CadastroPage extends StatelessWidget {
+class CadastroPage extends StatefulWidget {
+  @override
+  State <CadastroPage> createState() => _CadastroPageState();
+}
+
+class _CadastroPageState extends State<CadastroPage> {
   final _formKey = GlobalKey<FormState>(); // Chave para o formulário
   final imagebookshelf = "https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
-  
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController senhaController = TextEditingController();
+
+  // Controladores para os campos de texto
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _senhaController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +161,7 @@ class CadastroPage extends StatelessWidget {
 
                       // Campo Email
                       TextFormField(
-                        controller: emailController,
+                        controller: _emailController,
                         decoration: InputDecoration(
                           labelText: 'Email',
                           border: OutlineInputBorder(
@@ -152,7 +185,7 @@ class CadastroPage extends StatelessWidget {
 
                       // Campo Senha
                       TextFormField(
-                        controller: senhaController,
+                        controller: _senhaController,
                         obscureText: true,
                         decoration: InputDecoration(
                           labelText: 'Senha',
@@ -172,29 +205,37 @@ class CadastroPage extends StatelessWidget {
 
                       // Botão Cadastrar
                       ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState?.validate() ?? false) {
-                            // Salvar usuário no Firestore
-                            FirebaseFirestore.instance.collection('usuarios').add({
-                              'email': emailController.text,
-                              'senha': senhaController.text,
-                            });
+  onPressed: () async {
+    if (_formKey.currentState?.validate() ?? false) {
+      final email = _emailController.text;
+      final senha = _senhaController.text;
 
-                            // Navega para a página de login
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => LoginPage()),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                        ),
-                        child: Text('Cadastrar'),
-                      ),
+      final authService = AuthService();
+      final errorMessage = await authService.cadastrarUsuario(email, senha);
+
+      if (errorMessage == null) {
+        // Sucesso
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Usuário cadastrado com sucesso!')),
+        );
+        Navigator.pop(context); // Volta para a tela de login
+      } else {
+        // Exibe mensagem de erro
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    }
+  },
+  style: ElevatedButton.styleFrom(
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(15),
+    ),
+    padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+  ),
+  child: Text('Cadastrar'),
+),
+
                       SizedBox(height: 20),
 
                       // Texto clicável "Já tem uma conta?"
@@ -233,12 +274,34 @@ class CadastroPage extends StatelessWidget {
 
 
 
+
+
+
+
+
+
+
+
+
+
+class FirebaseAuthService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  Future<UserCredential?> signInWithEmailAndPassword(String email, String password) async {
+    try {
+      return await _auth.signInWithEmailAndPassword(email: email, password: password);
+    } catch (e) {
+      rethrow ;
+    }
+  }
+}
+
 class LoginPage extends StatelessWidget {
   final _formKey = GlobalKey<FormState>(); // Chave para o formulário
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _senhaController = TextEditingController();
+  final FirebaseAuthService _authService = FirebaseAuthService(); // Adicionando a instância do FirebaseAuthService
   final imagebookshelf = "https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
-  
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController senhaController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -296,7 +359,7 @@ class LoginPage extends StatelessWidget {
 
                       // Campo Email
                       TextFormField(
-                        controller: emailController,
+                        controller: _emailController,
                         decoration: InputDecoration(
                           labelText: 'Email',
                           border: OutlineInputBorder(
@@ -317,10 +380,11 @@ class LoginPage extends StatelessWidget {
                         },
                       ),
                       SizedBox(height: 20),
+                     
 
                       // Campo Senha
                       TextFormField(
-                        controller: senhaController,
+                        controller: _senhaController,
                         obscureText: true,
                         decoration: InputDecoration(
                           labelText: 'Senha',
@@ -342,29 +406,19 @@ class LoginPage extends StatelessWidget {
                       ElevatedButton(
                         onPressed: () async {
                           if (_formKey.currentState?.validate() ?? false) {
-                            // Verificar se o email e a senha estão no Firestore
-                            final querySnapshot = await FirebaseFirestore.instance
-                                .collection('usuarios')
-                                .where('email', isEqualTo: emailController.text)
-                                .where('senha', isEqualTo: senhaController.text)
-                                .get();
-
-                            if (querySnapshot.docs.isNotEmpty) {
-                              // Verificar se o widget ainda está montado antes de navegar
-                              if (!context.mounted) return;
-
-                              // Se o login for válido
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => ProfileCreationPage()),
+                            try {
+                              final userCredential = await _authService.signInWithEmailAndPassword(
+                                _emailController.text.trim(),
+                                _senhaController.text.trim(),
                               );
-                            } else {
-                              // Verificar se o widget ainda está montado antes de mostrar o SnackBar
-                              if (!context.mounted) return;
-
-                              // Se não bater
+                              if (userCredential != null) {
+                                // Login bem-sucedido
+                                Navigator.pushReplacementNamed(context, '/criacao');
+                              }
+                            } catch (e) {
+                              // Exibir mensagem de erro
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Email ou senha inválidos')),
+                                SnackBar(content: Text('Erro ao fazer login: ${e.toString()}')),
                               );
                             }
                           }
@@ -382,10 +436,7 @@ class LoginPage extends StatelessWidget {
                       // Texto clicável "Esqueceu a senha?"
                       TextButton(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => SenhaPage())
-                          );
+                          Navigator.pushNamed(context, '/reset');
                         },
                         child: Text(
                           'Esqueceu a senha?',
@@ -397,10 +448,7 @@ class LoginPage extends StatelessWidget {
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => CadastroPage()),
-                          );
+                          Navigator.pushNamed(context, '/cadastro');
                         },
                         child: Text(
                           'Criar conta?',
@@ -424,15 +472,7 @@ class LoginPage extends StatelessWidget {
 
 
 
-class Usuario {
-  String email;
-  String senha;
 
-  Usuario({required this.email, required this.senha});
-  
-  // Método para alterar a senha
-  
-}
 
 class ProfileCreationPage extends StatefulWidget {
   @override
@@ -1336,12 +1376,13 @@ class SenhaPage extends StatelessWidget {
                         onPressed: () async {
                           if (_formKey.currentState?.validate() ?? false) {
                             try {
-                              // Verificar o email para enviar a recuperação
-                              await _auth.sendPasswordResetEmail(email: _emailController.text);
+                              // Atualiza a senha do usuário
+                              User? user = _auth.currentUser;
+                              await user?.updatePassword(_senhaController.text);
 
                               // Exemplo de ação ao confirmar
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Link de recuperação de senha enviado!')),
+                                SnackBar(content: Text('Senha atualizada com sucesso!')),
                               );
 
                               Navigator.pop(context); // Voltar para a tela anterior
@@ -1371,6 +1412,7 @@ class SenhaPage extends StatelessWidget {
     );
   }
 }
+
 
 
 

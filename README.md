@@ -11,3 +11,7 @@ adição de uma nova tela(Provavel tela de refazer senha )
 Adição 0.2
 
 criação de 3 telas (recriação de senha,cadastro e notas)
+
+adição 0.3
+
+Crud Parcial (creat,uptade,read)

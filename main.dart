@@ -1188,24 +1188,35 @@ class Profilels extends StatelessWidget {
       "https://cdn-2.worldwebs.com/assets/images/f/ed0b52349d39d39d5693cac6bb0cc06f.jpeg?666490501";
 
   Future<Map<String, dynamic>> _fetchUserProfile(String uid) async {
-    final firestore = FirebaseFirestore.instance;
-    final docSnapshot = await firestore.collection('usuarios').doc(uid).get();
+    if (uid.isEmpty) {
+      throw Exception("UID inválido ou não encontrado.");
+    }
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final docSnapshot = await firestore.collection('usuarios').doc(uid).get();
 
-    if (docSnapshot.exists) {
-      return docSnapshot.data()!;
-    } else {
-      return {
-        'nome': 'Nome não informado',
-        'dataNascimento': 'Data não informada',
-        'genero': 'Gênero não informado',
-        'categoriaFavorita': 'Categoria não informada',
-      };
+      if (docSnapshot.exists) {
+        return docSnapshot.data()!;
+      } else {
+        return {
+          'nome': 'Nome não informado',
+          'dataNascimento': 'Data não informada',
+          'genero': 'Gênero não informado',
+          'categoriaFavorita': 'Categoria não informada',
+        };
+      }
+    } catch (e) {
+      throw Exception("Erro ao acessar Firestore: $e");
     }
   }
 
   Future<String> _getUid() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('uid') ?? '';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('uid') ?? '';
+    } catch (e) {
+      throw Exception("Erro ao recuperar o UID: $e");
+    }
   }
 
   @override
@@ -1222,120 +1233,119 @@ class Profilels extends StatelessWidget {
         ),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
-        future: _getUid().then((uid) => _fetchUserProfile(uid)), // Aqui está a chamada correta
+        future: _getUid().then((uid) => _fetchUserProfile(uid)),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text('Erro ao carregar os dados.'));
+            return Center(
+              child: Text(
+                'Erro ao carregar os dados: ${snapshot.error}',
+                style: TextStyle(color: Colors.red),
+              ),
+            );
+          } else if (!snapshot.hasData || snapshot.data == null) {
+            return Center(
+              child: Text(
+                'Nenhum dado encontrado.',
+                style: TextStyle(color: Colors.grey),
+              ),
+            );
           } else {
             final data = snapshot.data!;
-            return Column(
-              children: <Widget>[
-                Container(
-                  padding: EdgeInsets.only(top: 24),
-                  width: MediaQuery.of(context).size.width,
-                  height: MediaQuery.of(context).size.height / 2,
-                  decoration: BoxDecoration(
-                    color: green,
-                    borderRadius: BorderRadius.only(
-                      bottomRight: Radius.circular(16),
-                      bottomLeft: Radius.circular(16),
+            return SingleChildScrollView(
+              child: Column(
+                children: <Widget>[
+                  Container(
+                    padding: EdgeInsets.only(top: 24),
+                    width: MediaQuery.of(context).size.width,
+                    decoration: BoxDecoration(
+                      color: green,
+                      borderRadius: BorderRadius.only(
+                        bottomRight: Radius.circular(16),
+                        bottomLeft: Radius.circular(16),
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    children: <Widget>[
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          CircleAvatar(
-                            radius: 60, // Tamanho da imagem redonda
-                            backgroundImage: NetworkImage(url),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        "ID: 434534",
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16, bottom: 32),
-                        child: Text(
-                          data['nome'],
+                    child: Column(
+                      children: <Widget>[
+                        CircleAvatar(
+                          radius: 60,
+                          backgroundImage: NetworkImage(url),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          data['nome'] ?? 'Nome não disponível',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 20, right: 20),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: <Widget>[
-                            Flexible(
-                              child: Column(
-                                children: <Widget>[
-                                  Icon(
-                                    Icons.calendar_today_outlined,
-                                    color: Colors.white,
-                                  ),
-                                  Text(
-                                    data['dataNascimento'],
-                                    style: TextStyle(color: Colors.white),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ],
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: <Widget>[
+                              _buildInfoColumn(
+                                Icons.calendar_today_outlined,
+                                data['dataNascimento'] ?? 'Não informado',
                               ),
-                            ),
-                            Flexible(
-                              child: Column(
-                                children: <Widget>[
-                                  Icon(
-                                    Icons.games,
-                                    color: Colors.white,
-                                  ),
-                                  Text(
-                                    data['genero'],
-                                    style: TextStyle(color: Colors.white),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ],
+                              _buildInfoColumn(
+                                Icons.games,
+                                data['genero'] ?? 'Não informado',
                               ),
-                            ),
-                            Flexible(
-                              child: Column(
-                                children: <Widget>[
-                                  Icon(
-                                    Icons.category,
-                                    color: Colors.white,
-                                  ),
-                                  Text(
-                                    data['categoriaFavorita'],
-                                    style: TextStyle(color: Colors.white),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ],
+                              _buildInfoColumn(
+                                Icons.category,
+                                data['categoriaFavorita'] ?? 'Não informado',
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/apagar');
+                      },
+                      child: Text(
+                        'Apagar conta?',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          decoration: TextDecoration.underline,
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           }
         },
       ),
     );
   }
+
+  Widget _buildInfoColumn(IconData icon, String label) {
+    return Flexible(
+      child: Column(
+        children: <Widget>[
+          Icon(icon, color: Colors.white),
+          SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(color: Colors.white),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ],
+      ),
+    );
+  }
 }
+
 
 
 
@@ -1728,6 +1738,8 @@ class _NotesPageState extends State<NotesPage> {
 
 
 
+
+
 class DeleteAccountPage extends StatefulWidget {
   @override
   State<DeleteAccountPage> createState() => _DeleteAccountPageState();
@@ -1749,9 +1761,11 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nenhum usuário autenticado')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nenhum usuário autenticado')),
+          );
+        }
         return;
       }
 
@@ -1762,12 +1776,21 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
       final credential = EmailAuthProvider.credential(email: email, password: senha);
       await user.reauthenticateWithCredential(credential);
 
+      // Deleta o documento do Firestore
+      final prefs = await SharedPreferences.getInstance();
+      final uid = prefs.getString('uid');
+      if (uid != null) {
+        await FirebaseFirestore.instance.collection('usuarios').doc(uid).delete();
+      }
+
       // Deleta a conta
       await user.delete();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Conta apagada com sucesso')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Conta apagada com sucesso')),
+        );
+      }
 
       Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
@@ -1780,13 +1803,17 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
         message = 'Faça login novamente para excluir a conta.';
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro inesperado. Tente novamente.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro inesperado. Tente novamente.')),
+        );
+      }
     }
   }
 
@@ -1922,4 +1949,3 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
     );
   }
 }
-

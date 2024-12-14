@@ -1,13 +1,5 @@
 
-
-import 'package:english_words/english_words.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter/services.dart';
-import 'package:csv/csv.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'bibliotecas.dart';
 
 
 void main() async {
@@ -41,6 +33,7 @@ class MyApp extends StatelessWidget {
           '/home': (context) => MyHomePage(),
           '/criacao': (context)=>ProfileCreationPage(),
           '/reset':(context)=>SenhaPage(),
+          '/apagar':(context)=>DeleteAccountPage(),
         },
       ),
     );
@@ -273,11 +266,19 @@ class _CadastroPageState extends State<CadastroPage> {
 
 
 
+class FirestoreService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-
-
-
-
+  Future<bool> verifyUserExists(String uid) async {
+    try {
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      return userDoc.exists; // Verifica se o documento existe
+    } catch (e) {
+      print("Erro ao verificar usuário no Firestore: $e");
+      return false;
+    }
+  }
+}
 
 
 
@@ -291,7 +292,7 @@ class FirebaseAuthService {
     try {
       return await _auth.signInWithEmailAndPassword(email: email, password: password);
     } catch (e) {
-      rethrow ;
+      rethrow;
     }
   }
 }
@@ -300,8 +301,33 @@ class LoginPage extends StatelessWidget {
   final _formKey = GlobalKey<FormState>(); // Chave para o formulário
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _senhaController = TextEditingController();
-  final FirebaseAuthService _authService = FirebaseAuthService(); // Adicionando a instância do FirebaseAuthService
+  final FirebaseAuthService _authService = FirebaseAuthService(); // Instância do FirebaseAuthService
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Instância do Firestore
   final imagebookshelf = "https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
+
+  Future<void> _saveUserId(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('uid', uid); // Salva o UID
+  }
+
+  Future<void> _checkUserAndRedirect(String uid, BuildContext context) async {
+    try {
+      DocumentSnapshot userDoc = await _firestore.collection('usuarios').doc(uid).get();
+
+      if (userDoc.exists) {
+        // Se o documento do usuário existir, redireciona para /home
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        // Se o documento não existir, redireciona para /criacao
+        Navigator.pushReplacementNamed(context, '/criacao');
+      }
+    } catch (e) {
+      // Exibe mensagem de erro em caso de falha
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao verificar o usuário: ${e.toString()}')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -380,7 +406,6 @@ class LoginPage extends StatelessWidget {
                         },
                       ),
                       SizedBox(height: 20),
-                     
 
                       // Campo Senha
                       TextFormField(
@@ -412,11 +437,14 @@ class LoginPage extends StatelessWidget {
                                 _senhaController.text.trim(),
                               );
                               if (userCredential != null) {
-                                // Login bem-sucedido
-                                Navigator.pushReplacementNamed(context, '/criacao');
+                                final uid = userCredential.user?.uid;
+                                if (uid != null) {
+                                  await _saveUserId(uid);  // Salva o UID do usuário
+                                  await _checkUserAndRedirect(uid, context);  // Verifica o Firestore
+                                }
                               }
                             } catch (e) {
-                              // Exibir mensagem de erro
+                              // Exibe mensagem de erro caso o login falhe
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Erro ao fazer login: ${e.toString()}')),
                               );
@@ -458,6 +486,18 @@ class LoginPage extends StatelessWidget {
                           ),
                         ),
                       ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/apagar');
+                        },
+                        child: Text(
+                          'Apagar conta?',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -469,7 +509,6 @@ class LoginPage extends StatelessWidget {
     );
   }
 }
-
 
 
 
@@ -521,6 +560,46 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
       categorias = categoriasSet.toList();
       generos = generosSet.toList();
     });
+  }
+
+  Future<String?> _obterUid() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('uid');
+  }
+
+  Future<void> _salvarUsuarioNoFirestore() async {
+    String? uid = await _obterUid();
+    if (uid == null) {
+      // UID não encontrado no SharedPreferences, talvez redirecionar para a página de login.
+      return;
+    }
+
+    // Instância do Firestore
+    final firestore = FirebaseFirestore.instance;
+
+    // Salvar os dados no Firestore
+    await firestore.collection('usuarios').doc(uid).set({
+      'nome': nome,
+      'dataNascimento': dataNascimento,
+      'genero': genero,
+      'categoriaFavorita': categoriaFavorita,
+    });
+
+    // Navegar para a próxima página após salvar
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MyHomePage(),
+        settings: RouteSettings(
+          arguments: {
+            'nome': nome,
+            'dataNascimento': dataNascimento,
+            'genero': genero,
+            'categoriaFavorita': categoriaFavorita,
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -676,20 +755,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
                             _formKey.currentState?.save();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => MyHomePage(),
-                                settings: RouteSettings(
-                                  arguments: {
-                                    'nome': nome,
-                                    'dataNascimento': dataNascimento,
-                                    'genero': genero,
-                                    'categoriaFavorita': categoriaFavorita,
-                                  },
-                                ),
-                              ),
-                            );
+                            _salvarUsuarioNoFirestore(); // Salva no Firestore
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -1110,19 +1176,40 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
 
 
+
+
+
+
+
+
 class Profilels extends StatelessWidget {
   final Color green = Color.fromARGB(255, 188, 185, 225);
   final String url =
       "https://cdn-2.worldwebs.com/assets/images/f/ed0b52349d39d39d5693cac6bb0cc06f.jpeg?666490501";
 
+  Future<Map<String, dynamic>> _fetchUserProfile(String uid) async {
+    final firestore = FirebaseFirestore.instance;
+    final docSnapshot = await firestore.collection('usuarios').doc(uid).get();
+
+    if (docSnapshot.exists) {
+      return docSnapshot.data()!;
+    } else {
+      return {
+        'nome': 'Nome não informado',
+        'dataNascimento': 'Data não informada',
+        'genero': 'Gênero não informado',
+        'categoriaFavorita': 'Categoria não informada',
+      };
+    }
+  }
+
+  Future<String> _getUid() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('uid') ?? '';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final arguments = ModalRoute.of(context)?.settings.arguments as Map?;
-    final nome = arguments?['nome'] ?? 'Nome não informado';
-    final dataNascimento = arguments?['dataNascimento'] ?? 'Data não informada';
-    final genero = arguments?['genero'] ?? 'Gênero não informado';
-    final categoriaFavorita = arguments?['categoriaFavorita'] ?? 'Categoria não informada';
-
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -1134,94 +1221,106 @@ class Profilels extends StatelessWidget {
           ),
         ),
       ),
-      body: Column(
-        children: <Widget>[
-          Container(
-            padding: EdgeInsets.only(top: 24),
-            width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height / 2,
-            decoration: BoxDecoration(
-              color: green,
-              borderRadius: BorderRadius.only(
-                bottomRight: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-              ),
-            ),
-            child: Column(
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _getUid().then((uid) => _fetchUserProfile(uid)), // Aqui está a chamada correta
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Erro ao carregar os dados.'));
+          } else {
+            final data = snapshot.data!;
+            return Column(
               children: <Widget>[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    CircleAvatar(
-                      radius: 60, // Tamanho da imagem redonda
-                      backgroundImage: NetworkImage(url),
-                    ),
-                  ],
-                ),
-                Text(
-                  "ID: 434534",
-                  style: TextStyle(color: Colors.white70),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 16, bottom: 32),
-                  child: Text(
-                    nome,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                Container(
+                  padding: EdgeInsets.only(top: 24),
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height / 2,
+                  decoration: BoxDecoration(
+                    color: green,
+                    borderRadius: BorderRadius.only(
+                      bottomRight: Radius.circular(16),
+                      bottomLeft: Radius.circular(16),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 20, right: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
                     children: <Widget>[
-                      Flexible(
-                        child: Column(
-                          children: <Widget>[
-                            Icon(
-                              Icons.calendar_today_outlined,
-                              color: Colors.white,
-                            ),
-                            Text(
-                              dataNascimento,
-                              style: TextStyle(color: Colors.white),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ],
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          CircleAvatar(
+                            radius: 60, // Tamanho da imagem redonda
+                            backgroundImage: NetworkImage(url),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        "ID: 434534",
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16, bottom: 32),
+                        child: Text(
+                          data['nome'],
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                      Flexible(
-                        child: Column(
+                      Padding(
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: <Widget>[
-                            Icon(
-                              Icons.games,
-                              color: Colors.white,
+                            Flexible(
+                              child: Column(
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.calendar_today_outlined,
+                                    color: Colors.white,
+                                  ),
+                                  Text(
+                                    data['dataNascimento'],
+                                    style: TextStyle(color: Colors.white),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ],
+                              ),
                             ),
-                            Text(
-                              genero,
-                              style: TextStyle(color: Colors.white),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
+                            Flexible(
+                              child: Column(
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.games,
+                                    color: Colors.white,
+                                  ),
+                                  Text(
+                                    data['genero'],
+                                    style: TextStyle(color: Colors.white),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                      ),
-                      Flexible(
-                        child: Column(
-                          children: <Widget>[
-                            Icon(
-                              Icons.category,
-                              color: Colors.white,
-                            ),
-                            Text(
-                              categoriaFavorita,
-                              style: TextStyle(color: Colors.white),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
+                            Flexible(
+                              child: Column(
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.category,
+                                    color: Colors.white,
+                                  ),
+                                  Text(
+                                    data['categoriaFavorita'],
+                                    style: TextStyle(color: Colors.white),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -1230,13 +1329,14 @@ class Profilels extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
+            );
+          }
+        },
       ),
     );
   }
 }
+
 
 
 
@@ -1622,10 +1722,16 @@ class _NotesPageState extends State<NotesPage> {
 
 
 
+
+
+
+
+
+
 class DeleteAccountPage extends StatefulWidget {
   @override
-  State <DeleteAccountPage> createState() => _DeleteAccountPageState();
-} 
+  State<DeleteAccountPage> createState() => _DeleteAccountPageState();
+}
 
 class _DeleteAccountPageState extends State<DeleteAccountPage> {
   final _formKey = GlobalKey<FormState>();
@@ -1637,6 +1743,51 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
     emailController.dispose();
     senhaController.dispose();
     super.dispose();
+  }
+
+  Future<void> _deleteAccount() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nenhum usuário autenticado')),
+        );
+        return;
+      }
+
+      final email = emailController.text.trim();
+      final senha = senhaController.text.trim();
+
+      // Reautenticação do usuário
+      final credential = EmailAuthProvider.credential(email: email, password: senha);
+      await user.reauthenticateWithCredential(credential);
+
+      // Deleta a conta
+      await user.delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Conta apagada com sucesso')),
+      );
+
+      Navigator.of(context).pop();
+    } on FirebaseAuthException catch (e) {
+      String message = 'Erro ao apagar conta.';
+      if (e.code == 'wrong-password') {
+        message = 'Senha incorreta.';
+      } else if (e.code == 'user-not-found') {
+        message = 'Usuário não encontrado.';
+      } else if (e.code == 'requires-recent-login') {
+        message = 'Faça login novamente para excluir a conta.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro inesperado. Tente novamente.')),
+      );
+    }
   }
 
   @override
@@ -1734,29 +1885,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                       ElevatedButton(
                         onPressed: () async {
                           if (_formKey.currentState?.validate() ?? false) {
-                            // Verificar se o email e a senha estão no Firestore
-                            final querySnapshot = await FirebaseFirestore.instance
-                                .collection('usuarios')
-                                .where('email', isEqualTo: emailController.text)
-                                .where('senha', isEqualTo: senhaController.text)
-                                .get();
-
-                            if (!mounted) return; // Verifica se o widget ainda está montado
-
-                            if (querySnapshot.docs.isNotEmpty) {
-                              for (var doc in querySnapshot.docs) {
-                                await doc.reference.delete();
-                              }
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Conta apagada com sucesso')),
-                              );
-                              Navigator.pop(context);
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Credenciais inválidas')),
-                              );
-                            }
+                            await _deleteAccount();
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -1793,3 +1922,4 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
     );
   }
 }
+

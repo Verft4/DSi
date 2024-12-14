@@ -15,3 +15,7 @@ criação de 3 telas (recriação de senha,cadastro e notas)
 adição 0.3
 
 Crud Parcial (creat,uptade,read)
+
+adição 0.4
+
+Crud completo

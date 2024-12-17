@@ -34,6 +34,7 @@ class MyApp extends StatelessWidget {
           '/criacao': (context)=>ProfileCreationPage(),
           '/reset':(context)=>SenhaPage(),
           '/apagar':(context)=>DeleteAccountPage(),
+          '/apagarperfil':(context)=>DeleteProfilePage(),
         },
       ),
     );
@@ -780,17 +781,6 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
 }
 
 
-// Campo Gênero de Jogos (Autocomplete)
-
-
-
-
-
-  // Método para exibir os dados do usuário (caso necessário)
-
-
-
-
 
 
 class MyHomePage extends StatefulWidget {
@@ -884,10 +874,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
-
-
-
-
 
 
 
@@ -1177,11 +1163,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
 
 
-
-
-
-
-
 class Profilels extends StatelessWidget {
   final Color green = Color.fromARGB(255, 188, 185, 225);
   final String url =
@@ -1225,12 +1206,20 @@ class Profilels extends StatelessWidget {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: green,
-        flexibleSpace: Center(
+        title: Center(
           child: Text(
             "Perfil",
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.edit),
+            onPressed: () {
+              Navigator.pushNamed(context, '/criacao');
+            },
+          ),
+        ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _getUid().then((uid) => _fetchUserProfile(uid)),
@@ -1308,7 +1297,7 @@ class Profilels extends StatelessWidget {
                     padding: const EdgeInsets.all(16.0),
                     child: TextButton(
                       onPressed: () {
-                        Navigator.pushNamed(context, '/apagar');
+                        Navigator.pushNamed(context, '/apagarperfil');
                       },
                       child: Text(
                         'Apagar conta?',
@@ -1530,8 +1519,6 @@ class SenhaPage extends StatelessWidget {
 
 
 
-
-
 class Note {
   String title;
   String content;
@@ -1734,12 +1721,6 @@ class _NotesPageState extends State<NotesPage> {
 
 
 
-
-
-
-
-
-
 class DeleteAccountPage extends StatefulWidget {
   @override
   State<DeleteAccountPage> createState() => _DeleteAccountPageState();
@@ -1922,6 +1903,145 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
                         ),
                         child: const Text('Apagar Conta'),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Botão Voltar
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text(
+                          'Cancelar',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+class DeleteProfilePage extends StatefulWidget {
+  @override
+  State<DeleteProfilePage> createState() => _DeleteProfilePageState();
+}
+
+class _DeleteProfilePageState extends State<DeleteProfilePage> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController senhaController = TextEditingController();
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    senhaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _deleteProfile() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nenhum usuário autenticado')),
+          );
+        }
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final uid = prefs.getString('uid');
+      if (uid != null) {
+        await FirebaseFirestore.instance.collection('usuarios').doc(uid).delete();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Perfil excluído com sucesso')),
+        );
+      }
+
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro inesperado ao excluir o perfil')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 188, 185, 225),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height * 0.3,
+                decoration: const BoxDecoration(color: Color.fromARGB(255, 188, 185, 225)),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Text(
+                      "EXCLUIR PERFIL",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(70)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Confirme para excluir seu perfil',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.black),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Botão Excluir Perfil
+                      ElevatedButton(
+                        onPressed: () async {
+                          await _deleteProfile();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                        ),
+                        child: const Text('Excluir Perfil'),
                       ),
                       const SizedBox(height: 20),
 

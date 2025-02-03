@@ -1,5 +1,6 @@
-import 'bibliotecas.dart';
 
+import 'bibliotecas.dart';
+import 'package:http/http.dart' as http;
 
 
 class AuthService {
@@ -48,6 +49,78 @@ class FirebaseAuthService {
       return await _auth.signInWithEmailAndPassword(email: email, password: password);
     } catch (e) {
       rethrow;
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+class FirebaseServiceQUiz {
+  // Função para salvar as respostas do quiz no Firestore
+  Future<void> salvarRespostas(String? plataforma, String? preferenciaJogos,
+      String? generoJogo, String? tagJogo) async {
+    String? uid = await _obterUid();
+    if (uid == null) {
+      // UID não encontrado no SharedPreferences, talvez redirecionar para a página de login.
+      return;
+    }
+
+    // Instância do Firestore
+    final firestore = FirebaseFirestore.instance;
+
+    // Salvar os dados no Firestore
+    await firestore.collection('usuarios').doc(uid).set({
+      'plataforma': plataforma,
+      'preferenciaJogos': preferenciaJogos,
+      'generoJogo': generoJogo,
+      'tagJogo': tagJogo,
+    });
+  }
+
+  // Função para obter o UID do usuário armazenado no SharedPreferences
+  Future<String?> _obterUid() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('uid');
+  }
+}
+
+
+class RecomendacaoService {
+  final String baseUrl = "http://10.0.0.100:5000"; // Altere para o IP correto
+
+  Future<List<String>> buscarRecomendacoes({
+    required String plataforma,
+    required String categoria,
+    required String genero,
+    required String tag,
+  }) async {
+    final url = Uri.parse('$baseUrl/recomendar');
+
+    final response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "plataforma": plataforma,
+        "categoria": categoria,
+        "genero": genero,
+        "tag": tag,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<String>.from(data["recomendacoes"]);
+    } else {
+      throw Exception("Erro ao buscar recomendações");
     }
   }
 }

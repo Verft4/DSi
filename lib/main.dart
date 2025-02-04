@@ -1,15 +1,19 @@
 
 import 'bibliotecas.dart';
 import 'firebase.dart';
-import 'package:http/http.dart' as http;
+
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  runApp(MyApp());
-}
 
+  runApp(ChangeNotifierProvider(
+      create: (context) => MyAppState(),
+      child: MyApp(),
+    ),
+  );
+}
 
 
 
@@ -44,17 +48,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyAppState extends ChangeNotifier {
-  List<int> favorites = []; // Lista de favoritos (IDs dos jogos)
-  List<List<dynamic>> jogos = [];
 
-  void carregarDadosCsv() async {
-    final String response = await rootBundle.loadString('assets/dataset_filtrado.csv');
-    final List<List<dynamic>> data = CsvToListConverter().convert(response);
-    jogos = data;
-    notifyListeners();
-  }
-}
 
 // Tela de Login
 // Tela de Login
@@ -74,7 +68,7 @@ class CadastroPage extends StatefulWidget {
 
 class _CadastroPageState extends State<CadastroPage> {
   final _formKey = GlobalKey<FormState>(); // Chave para o formulário
-  final imagebookshelf = "https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
+  final imagebookshelf = "https://th.bing.com/th/id/OIP.qGu31yC_X4ZoXeqmoOxy2wHaHa?rs=1&pid=ImgDetMain";
 
   // Controladores para os campos de texto
   final TextEditingController _emailController = TextEditingController();
@@ -247,7 +241,7 @@ class LoginPage extends StatelessWidget {
   final TextEditingController _senhaController = TextEditingController();
   final FirebaseAuthService _authService = FirebaseAuthService(); // Instância do FirebaseAuthService
   final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Instância do Firestore
-  final imagebookshelf = "https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
+  final imagebookshelf = "https://th.bing.com/th/id/OIP.qGu31yC_X4ZoXeqmoOxy2wHaHa?rs=1&pid=ImgDetMain";
 
   Future<void> _saveUserId(String uid) async {
     final prefs = await SharedPreferences.getInstance();
@@ -741,6 +735,20 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   var selectedindex = 0;
   bool showNavigationRail = true; // Controle de visibilidade da aba
+  List<String> recomendacoes = [];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Pegando as recomendações da tela anterior
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      setState(() {
+        recomendacoes = args['recomendacoes'] ?? [];
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -759,10 +767,10 @@ class _MyHomePageState extends State<MyHomePage> {
         page = NotesPage();
         break;
       case 4:
-        page=Pesquisa();
+        page = Pesquisa();
         break;
-      case 5 :
-      page = QuizPage();
+      case 5:
+        page = QuizPage();  // Alterado para manter a navegação para a tela do Quiz
         break;
     }
 
@@ -810,11 +818,11 @@ class _MyHomePageState extends State<MyHomePage> {
                           NavigationRailDestination(
                             icon: Icon(Icons.search),
                             label: Text('Pesquisa'),
-                             ),
-                           NavigationRailDestination(
+                          ),
+                          NavigationRailDestination(
                             icon: Icon(Icons.quiz),
                             label: Text('quiz'),
-                             ),
+                          ),
                         ],
                         selectedIndex: selectedindex,
                         onDestinationSelected: (value) {
@@ -838,8 +846,28 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+class MyAppState extends ChangeNotifier {
+  List<List<dynamic>> jogos = [];
+  Set<int> favorites = {};
 
+  void adicionarAosFavoritos(int appid) {
+    if (!favorites.contains(appid)) {
+      favorites.add(appid);
+      notifyListeners();
+    }
+  }
 
+  Future<void> carregarDadosCsv() async {
+    try {
+      final String response = await rootBundle.loadString('assets/dataset_filtrado.csv');
+      final List<List<dynamic>> data = CsvToListConverter().convert(response);
+      jogos = data;
+      notifyListeners();
+    } catch (e) {
+      print("Erro ao carregar CSV: $e");
+    }
+  }
+}
 
 
 
@@ -849,57 +877,57 @@ class GeneratorPage extends StatefulWidget {
 }
 
 class _GeneratorPageState extends State<GeneratorPage> {
-  List<List<dynamic>> jogos = [];
   int currentIndex = 0;
-  Set<int> favoritos = {}; // Usando Set para evitar duplicatas automaticamente
+  late List<String> recomendacoes;
 
   @override
   void initState() {
     super.initState();
     carregarDadosCsv();
+    // Definindo o índice inicial aleatório
+    final appState = context.read<MyAppState>();
+    currentIndex = (appState.jogos.isNotEmpty) ? Random().nextInt(appState.jogos.length) : 0;
   }
 
+  // Função para carregar os dados CSV
   Future<void> carregarDadosCsv() async {
-    try {
-      final String response =
-          await rootBundle.loadString('assets/dataset_filtrado.csv');
-      final List<List<dynamic>> data = CsvToListConverter().convert(response);
-
-      setState(() {
-        jogos = data;
-      });
-    } catch (e) {
-      print("Erro ao carregar CSV: $e");
-    }
+    await context.read<MyAppState>().carregarDadosCsv();
   }
 
-  void adicionarAosFavoritos(int appid) {
-    if (!favoritos.contains(appid)) {
-      setState(() {
-        favoritos.add(appid);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Jogo $appid adicionado aos favoritos!'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
+  // Função para mostrar o próximo jogo
   void proximoJogo() {
     setState(() {
-      currentIndex = (currentIndex + 1) % jogos.length;
+      final appState = context.read<MyAppState>();
+      currentIndex = (appState.jogos.isNotEmpty) ? Random().nextInt(appState.jogos.length) : 0;
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Pegando as recomendações passadas via argumentos
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?; 
+    if (args != null && args['recomendacoes'] != null) {
+      setState(() {
+        recomendacoes = List<String>.from(args['recomendacoes']);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final appState = context.watch<MyAppState>();
+    final jogos = appState.jogos;
+
+    // Verificando se há jogos disponíveis
     if (jogos.isEmpty) {
       return Center(child: CircularProgressIndicator());
     }
 
     final jogoAtual = jogos[currentIndex];
+    
+    // Verificando se o jogo possui dados completos
     if (jogoAtual.length < 36) {
       return Center(child: Text("Dados do jogo incompletos"));
     }
@@ -909,59 +937,105 @@ class _GeneratorPageState extends State<GeneratorPage> {
     final String genres = jogoAtual[35];
     final String name = jogoAtual[1];
 
+    bool isFavorito = appState.favorites.contains(appid);
+
     return GestureDetector(
       onVerticalDragEnd: (details) {
         if (details.primaryVelocity != null) {
+          // Se o gesto for para cima, adiciona aos favoritos
           if (details.primaryVelocity! > 0) {
-            adicionarAosFavoritos(appid);
+            appState.adicionarAosFavoritos(appid);
           } else {
             proximoJogo();
           }
         }
       },
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      child: Scaffold(
+        appBar: AppBar(title: Text("Gerador de Jogos")),
+        body: Column(
           children: [
-            Container(
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey, width: 2),
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withValues(),
-                    spreadRadius: 2,
-                    blurRadius: 5,
-                    offset: Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Container(
-                width: 300,
-                height: 500,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  image: DecorationImage(
-                    image: NetworkImage(header),
-                    fit: BoxFit.fill,
-                  ),
+            // Exibindo as recomendações na parte superior
+            if (recomendacoes.isNotEmpty)
+              Expanded(
+                flex: 1,
+                child: ListView.builder(
+                  itemCount: recomendacoes.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(recomendacoes[index]),
+                    );
+                  },
                 ),
               ),
-            ),
-            SizedBox(height: 20),
-            Text(
-              name,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            Text(
-              genres,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[700],
-                  ),
+            
+            // Exibindo o jogo atual
+            Expanded(
+              flex: 2,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey, width: 2),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.3),
+                            spreadRadius: 2,
+                            blurRadius: 5,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 300,
+                            height: 500,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              image: DecorationImage(
+                                image: NetworkImage(header),
+                                fit: BoxFit.fill,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: IconButton(
+                              icon: Icon(
+                                isFavorito ? Icons.favorite : Icons.favorite_border,
+                                color: isFavorito ? Colors.red : Colors.white,
+                                size: 30,
+                              ),
+                              onPressed: () {
+                                appState.adicionarAosFavoritos(appid);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      name,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    Text(
+                      genres,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[700],
+                          ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -972,28 +1046,19 @@ class _GeneratorPageState extends State<GeneratorPage> {
 
 
 
-
-class FavoritesPage extends StatefulWidget {
-  @override
-  State<FavoritesPage> createState() => _FavoritesPageState();
-}
-
-class _FavoritesPageState extends State<FavoritesPage> {
-  String searchQuery = '';
-
+class FavoritesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<MyAppState>();
+    final appState = context.watch<MyAppState>();
+    final favoritos = appState.favorites;
+    final jogos = appState.jogos;
 
-    // Filtrar favoritos com base na pesquisa
-    var filteredFavorites = appState.favorites.where((id) {
-      var jogo = appState.jogos.firstWhere((j) => j[0] == id, orElse: () => []);
-      return jogo.isNotEmpty && jogo[1].toLowerCase().contains(searchQuery.toLowerCase());
+    var filteredFavorites = jogos.where((jogo) {
+      return favoritos.contains(jogo[0]);
     }).toList();
 
     return Column(
       children: [
-        // Barra de pesquisa
         Padding(
           padding: const EdgeInsets.all(10),
           child: TextField(
@@ -1003,59 +1068,49 @@ class _FavoritesPageState extends State<FavoritesPage> {
               prefixIcon: Icon(Icons.search),
             ),
             onChanged: (value) {
-              setState(() {
-                searchQuery = value;
-              });
+              // Filtra favoritos com base na pesquisa
             },
           ),
         ),
-        // Lista de favoritos em grade
         Expanded(
           child: filteredFavorites.isEmpty
               ? Center(child: Text('Nenhum favorito encontrado.'))
-              : GridView.builder(
+              : ListView.builder(
                   padding: EdgeInsets.all(10),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2, // 2 jogos por linha
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 3 / 4,
-                  ),
                   itemCount: filteredFavorites.length,
                   itemBuilder: (context, index) {
-                    var jogo = appState.jogos.firstWhere((j) => j[0] == filteredFavorites[index]);
+                    var jogo = filteredFavorites[index];
                     var header = jogo[12]; // URL da capa do jogo
                     var name = jogo[1];
-                    
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ImageFullScreen(header: header, name: name),
-                          ),
-                        );
-                      },
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                image: DecorationImage(
-                                  image: NetworkImage(header),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
+
+                    return Card(
+                      elevation: 4,
+                      margin: EdgeInsets.symmetric(vertical: 8),
+                      child: ListTile(
+                        contentPadding: EdgeInsets.all(10),
+                        leading: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            image: DecorationImage(
+                              image: NetworkImage(header),
+                              fit: BoxFit.cover,
                             ),
                           ),
-                          SizedBox(height: 5),
-                          Text(
-                            name,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
+                        ),
+                        title: Text(
+                          name,
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ImageFullScreen(header: header, name: name),
+                            ),
+                          );
+                        },
                       ),
                     );
                   },
@@ -1065,6 +1120,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 }
+
 
 class ImageFullScreen extends StatelessWidget {
   final String header;
@@ -2019,7 +2075,7 @@ class _PesquisaState extends State<Pesquisa> {
   String searchQuery = '';
   List<List<dynamic>> jogos = [];
   List<List<dynamic>> jogosFiltrados = [];
-  int? selectedIndex;
+  List<List<dynamic>> sugestoes = [];  // Armazenar sugestões
   int currentIndex = 0;
 
   @override
@@ -2036,15 +2092,18 @@ class _PesquisaState extends State<Pesquisa> {
     setState(() {
       jogos = data;
       jogosFiltrados = List.from(jogos);
+      sugestoes = List.from(jogos);  // Inicializa as sugestões com todos os jogos
     });
   }
 
   void filtrarJogos(String query) {
     setState(() {
       searchQuery = query;
+      // Filtra os jogos com base no nome (assumindo que o nome do jogo esteja na posição 1)
       jogosFiltrados = jogos
           .where((jogo) => jogo[1].toString().toLowerCase().contains(query.toLowerCase()))
           .toList();
+      sugestoes = jogosFiltrados;  // Atualiza as sugestões com base na pesquisa
       currentIndex = 0; // Resetar o índice ao filtrar
     });
   }
@@ -2090,6 +2149,26 @@ class _PesquisaState extends State<Pesquisa> {
                 onChanged: filtrarJogos,
               ),
             ),
+            if (searchQuery.isNotEmpty && sugestoes.isNotEmpty)
+              SizedBox(
+                height: 200,  // Defina a altura da lista de sugestões
+                child: ListView.builder(
+                  itemCount: sugestoes.length,
+                  itemBuilder: (context, index) {
+                    final jogo = sugestoes[index];
+                    return ListTile(
+                      title: Text(jogo[1].toString()),  // Exibe o nome do jogo
+                      onTap: () {
+                        setState(() {
+                          searchQuery = jogo[1].toString();
+                          jogosFiltrados = [jogo];  // Exibe apenas o jogo selecionado
+                          currentIndex = 0;
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
             if (jogosFiltrados.isNotEmpty)
               Jogos(jogo: jogosFiltrados[currentIndex]),
             if (jogosFiltrados.isNotEmpty)
@@ -2108,6 +2187,7 @@ class _PesquisaState extends State<Pesquisa> {
     );
   }
 }
+
 
 class Jogos extends StatelessWidget {
   const Jogos({super.key, required this.jogo});
@@ -2151,7 +2231,13 @@ class Jogos extends StatelessWidget {
                 children: [
                   Icon(Icons.category, color: Colors.blue),
                   SizedBox(width: 5),
-                  Text(genres, style: Theme.of(context).textTheme.bodyMedium),
+                  // Limita o tamanho do texto do gênero com TextOverflow.ellipsis
+                  Text(
+                    genres,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1, // Limita para 1 linha
+                  ),
                 ],
               ),
               Row(
@@ -2202,10 +2288,6 @@ class Jogos extends StatelessWidget {
 
 
 
-
-
-
-
 class QuizPage extends StatefulWidget {
   @override
   State<QuizPage> createState() => _QuizPageState();
@@ -2217,31 +2299,39 @@ class _QuizPageState extends State<QuizPage> {
   String? preferenciaJogos;
   String? generoJogo;
   String? tagJogo;
+  TextEditingController plataformaController = TextEditingController();
+  TextEditingController preferenciaJogosController = TextEditingController();
+  TextEditingController generoJogoController = TextEditingController();
+  TextEditingController tagJogoController = TextEditingController();
 
   final List<String> plataformas = ['Windows', 'Linux', 'Mac'];
   final List<String> preferenciasJogos = ['Single-Player', 'Multi-Player'];
+  final List<String> gameGenres = [
+    'Action', 'Adventure', 'RPG', 'Strategy', 'Horror', 'Racing', 
+    'Sports', 'Simulation', 'Puzzle', 'FPS', 'Open World'
+  ];
+  final List<String> gameTags = [
+    'Retro', 'Co-op', 'Battle Royale', 'Rich Story', 'Online Multiplayer', 
+    'Casual', 'Indie', 'Exploration', 'Survival', 'Hack and Slash'
+  ];
 
-  final FirebaseServiceQUiz _firebaseService = FirebaseServiceQUiz(); 
   final RecomendacaoService _recomendacaoService = RecomendacaoService();
 
-  Future<void> _salvarRespostasNoFirestore() async {
-    await _firebaseService.salvarRespostas(plataforma, preferenciaJogos, generoJogo, tagJogo);
-
-    // Buscar recomendações após salvar
+  Future<void> _salvarRespostas() async {
     List<String> recomendacoes = await _buscarRecomendacoes();
 
     if (mounted) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => GeneratorPage(),
+          builder: (context) => MyHomePage(),
           settings: RouteSettings(
             arguments: {
               'plataforma': plataforma,
               'preferenciaJogos': preferenciaJogos,
               'generoJogo': generoJogo,
               'tagJogo': tagJogo,
-              'recomendacoes': recomendacoes, // Passando as recomendações
+              'recomendacoes': recomendacoes, // Passando as recomendações para a Home
             },
           ),
         ),
@@ -2259,7 +2349,7 @@ class _QuizPageState extends State<QuizPage> {
       );
     } catch (e) {
       print("Erro ao buscar recomendações: $e");
-      return []; // Retorna lista vazia em caso de erro
+      return [];
     }
   }
 
@@ -2303,6 +2393,7 @@ class _QuizPageState extends State<QuizPage> {
                   child: Column(
                     children: [
                       SizedBox(height: 20),
+                      // Plataforma
                       DropdownButtonFormField<String>(
                         decoration: InputDecoration(
                           labelText: 'Qual plataforma você prefere?',
@@ -2312,66 +2403,110 @@ class _QuizPageState extends State<QuizPage> {
                         onChanged: (String? newValue) {
                           setState(() {
                             plataforma = newValue;
+                            plataformaController.clear();
                           });
                         },
                         items: plataformas.map((plataforma) => DropdownMenuItem<String>(
                           value: plataforma,
                           child: Text(plataforma),
                         )).toList(),
-                        validator: (value) => value == null ? 'Selecione uma plataforma' : null,
                       ),
                       SizedBox(height: 20),
+                      // Preferência Jogos
                       DropdownButtonFormField<String>(
                         decoration: InputDecoration(
-                          labelText: 'Você prefere jogos Single-Player ou Multi-Player?',
+                          labelText: 'Você prefere Single-Player ou Multi-Player?',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                         ),
                         value: preferenciaJogos,
                         onChanged: (String? newValue) {
                           setState(() {
                             preferenciaJogos = newValue;
+                            preferenciaJogosController.clear();
                           });
                         },
                         items: preferenciasJogos.map((preferencia) => DropdownMenuItem<String>(
                           value: preferencia,
                           child: Text(preferencia),
                         )).toList(),
-                        validator: (value) => value == null ? 'Selecione uma opção' : null,
                       ),
                       SizedBox(height: 20),
+                      // Gênero Jogo (Campo de texto para o usuário digitar)
                       TextFormField(
+                        controller: generoJogoController,
                         decoration: InputDecoration(
-                          labelText: 'Digite um gênero que você gosta',
+                          labelText: 'Escolha o Gênero',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                         ),
-                        onSaved: (value) {
-                          generoJogo = value?.toLowerCase();
+                        onChanged: (value) {
+                          setState(() {
+                            generoJogo = value;
+                          });
                         },
                       ),
-                      SizedBox(height: 20),
-                      TextFormField(
+                      // Dropdown para selecionar o Gênero
+                      DropdownButtonFormField<String>(
                         decoration: InputDecoration(
-                          labelText: 'Digite uma tag que você gosta',
-                          hintText: 'Deixe em branco para ignorar',
+                          labelText: 'Ou selecione uma das opções',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                         ),
-                        onSaved: (value) {
-                          tagJogo = value?.toLowerCase();
+                        value: generoJogo?.isEmpty == true ? null : generoJogo,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            generoJogo = newValue;
+                            generoJogoController.clear();
+                          });
                         },
+                        items: gameGenres.map((genre) => DropdownMenuItem<String>(
+                          value: genre,
+                          child: Text(genre),
+                        )).toList(),
+                      ),
+                      SizedBox(height: 20),
+                      // Tag Jogo (Campo de texto para o usuário digitar)
+                      TextFormField(
+                        controller: tagJogoController,
+                        decoration: InputDecoration(
+                          labelText: 'Escolha a Tag (Opcional)',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            tagJogo = value;
+                          });
+                        },
+                      ),
+                      // Dropdown para selecionar a Tag
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Ou selecione uma das opções',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        value: tagJogo?.isEmpty == true ? null : tagJogo,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            tagJogo = newValue;
+                            tagJogoController.clear();
+                          });
+                        },
+                        items: gameTags.map((tag) => DropdownMenuItem<String>(
+                          value: tag,
+                          child: Text(tag),
+                        )).toList(),
                       ),
                       SizedBox(height: 20),
                       ElevatedButton(
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
                             _formKey.currentState?.save();
-                            _salvarRespostasNoFirestore();
+                            _salvarRespostas();
                           }
                         },
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                           padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
                         ),
-                        child: Text('Salvar e Continuar'),
+                        child: Text('Salvar e Continua'),
                       ),
                     ],
                   ),
@@ -2385,6 +2520,4 @@ class _QuizPageState extends State<QuizPage> {
   }
 }
 
-extension StringCasingExtension on String {
-  String get capitalize => isEmpty ? this : this[0].toUpperCase() + substring(1);
-}
+

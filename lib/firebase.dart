@@ -95,7 +95,7 @@ class FirebaseServiceQUiz {
 
 
 class RecomendacaoService {
-  final String baseUrl = "http://10.0.0.100:5000"; // Altere para o IP correto
+  final String baseUrl = "http://127.0.0.1:5000"; // Altere para o IP correto
 
   Future<List<String>> buscarRecomendacoes({
     required String plataforma,

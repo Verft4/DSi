@@ -2,12 +2,18 @@
 import 'bibliotecas.dart';
 import 'firebase.dart';
 
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  runApp(MyApp());
-}
 
+  runApp(ChangeNotifierProvider(
+      create: (context) => MyAppState(),
+      child: MyApp(),
+    ),
+  );
+}
 
 
 
@@ -35,31 +41,14 @@ class MyApp extends StatelessWidget {
           '/reset':(context)=>SenhaPage(),
           '/apagar':(context)=>DeleteAccountPage(),
           '/apagarperfil':(context)=>DeleteProfilePage(),
+          '/quiz':(context)=>QuizPage()
         },
       ),
     );
   }
 }
 
-class MyAppState extends ChangeNotifier {
-  var current = WordPair.random();
 
-  void getNext() {
-    current = WordPair.random();
-    notifyListeners();
-  }
-
-  var favorites = <WordPair>[];
-
-  void toggleFavorite() {
-    if (favorites.contains(current)) {
-      favorites.remove(current);
-    } else {
-      favorites.add(current);
-    }
-    notifyListeners();
-  }
-}
 
 // Tela de Login
 // Tela de Login
@@ -79,7 +68,7 @@ class CadastroPage extends StatefulWidget {
 
 class _CadastroPageState extends State<CadastroPage> {
   final _formKey = GlobalKey<FormState>(); // Chave para o formulário
-  final imagebookshelf = "https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
+  final imagebookshelf = "https://th.bing.com/th/id/OIP.qGu31yC_X4ZoXeqmoOxy2wHaHa?rs=1&pid=ImgDetMain";
 
   // Controladores para os campos de texto
   final TextEditingController _emailController = TextEditingController();
@@ -246,29 +235,13 @@ class _CadastroPageState extends State<CadastroPage> {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class LoginPage extends StatelessWidget {
   final _formKey = GlobalKey<FormState>(); // Chave para o formulário
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _senhaController = TextEditingController();
   final FirebaseAuthService _authService = FirebaseAuthService(); // Instância do FirebaseAuthService
   final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Instância do Firestore
-  final imagebookshelf = "https://icon-library.com/images/bookshelf-icon-png/bookshelf-icon-png-6.jpg";
+  final imagebookshelf = "https://th.bing.com/th/id/OIP.qGu31yC_X4ZoXeqmoOxy2wHaHa?rs=1&pid=ImgDetMain";
 
   Future<void> _saveUserId(String uid) async {
     final prefs = await SharedPreferences.getInstance();
@@ -278,9 +251,12 @@ class LoginPage extends StatelessWidget {
   Future<void> _checkUserAndRedirect(String uid, BuildContext context) async {
     try {
       DocumentSnapshot userDoc = await _firestore.collection('usuarios').doc(uid).get();
+      
 
       if (userDoc.exists) {
+        
         // Se o documento do usuário existir, redireciona para /home
+        
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         // Se o documento não existir, redireciona para /criacao
@@ -401,6 +377,7 @@ class LoginPage extends StatelessWidget {
                                 _emailController.text.trim(),
                                 _senhaController.text.trim(),
                               );
+                              
                               if (userCredential != null) {
                                 final uid = userCredential.user?.uid;
                                 if (uid != null) {
@@ -408,7 +385,9 @@ class LoginPage extends StatelessWidget {
                                   await _checkUserAndRedirect(uid, context);  // Verifica o Firestore
                                 }
                               }
-                            } catch (e) {
+                            
+                            }  catch (e) {
+                              
                               // Exibe mensagem de erro caso o login falhe
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Erro ao fazer login: ${e.toString()}')),
@@ -551,10 +530,11 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
     });
 
     // Navegar para a próxima página após salvar
+    if (mounted){
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => MyHomePage(),
+        builder: (context)=>QuizPage(),
         settings: RouteSettings(
           arguments: {
             'nome': nome,
@@ -564,7 +544,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
           },
         ),
       ),
-    );
+    );}
   }
 
   @override
@@ -775,6 +755,9 @@ class _MyHomePageState extends State<MyHomePage> {
       case 4:
         page=Pesquisa();
         break;
+      case 5 :
+      page = QuizPage();
+        break;
     }
 
     return Scaffold(
@@ -821,7 +804,11 @@ class _MyHomePageState extends State<MyHomePage> {
                           NavigationRailDestination(
                             icon: Icon(Icons.search),
                             label: Text('Pesquisa'),
-                             )
+                             ),
+                           NavigationRailDestination(
+                            icon: Icon(Icons.quiz),
+                            label: Text('quiz'),
+                             ),
                         ],
                         selectedIndex: selectedindex,
                         onDestinationSelected: (value) {
@@ -846,7 +833,28 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
+class MyAppState extends ChangeNotifier {
+  List<List<dynamic>> jogos = [];
+  Set<int> favorites = {};
 
+  void adicionarAosFavoritos(int appid) {
+    if (!favorites.contains(appid)) {
+      favorites.add(appid);
+      notifyListeners();
+    }
+  }
+
+  Future<void> carregarDadosCsv() async {
+    try {
+      final String response = await rootBundle.loadString('assets/dataset_filtrado.csv');
+      final List<List<dynamic>> data = CsvToListConverter().convert(response);
+      jogos = data;
+      notifyListeners();
+    } catch (e) {
+      print("Erro ao carregar CSV: $e");
+    }
+  }
+}
 
 
 
@@ -856,8 +864,6 @@ class GeneratorPage extends StatefulWidget {
 }
 
 class _GeneratorPageState extends State<GeneratorPage> {
-  String searchQuery = '';
-  List<List<dynamic>> jogos = [];
   int currentIndex = 0;
 
   @override
@@ -867,184 +873,107 @@ class _GeneratorPageState extends State<GeneratorPage> {
   }
 
   Future<void> carregarDadosCsv() async {
-    final String response =
-        await rootBundle.loadString('assets/dataset_filtrado.csv');
-    final List<List<dynamic>> data = CsvToListConverter().convert(response);
+    await context.read<MyAppState>().carregarDadosCsv();
+  }
 
+  void proximoJogo() {
     setState(() {
-      jogos = data;
+      currentIndex = (currentIndex + 1) % context.read<MyAppState>().jogos.length;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<MyAppState>();
+    final jogos = appState.jogos;
+
     if (jogos.isEmpty) {
       return Center(child: CircularProgressIndicator());
     }
 
     final jogoAtual = jogos[currentIndex];
-    final isVisible = searchQuery.isEmpty ||
-        jogoAtual[8]
-            .toString()
-            .toLowerCase()
-            .contains(searchQuery.toLowerCase());
-
-    return Column(
-      children: [
-        // Barra de pesquisa
-        Container(
-          width: double.infinity,
-          height: 60,
-          padding: EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 188, 185, 225),
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.5),
-                spreadRadius: 1,
-                blurRadius: 5,
-                offset: Offset(0, 3),
-              ),
-            ],
-          ),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Pesquisar jogo...',
-              border: InputBorder.none,
-              prefixIcon: Icon(Icons.search),
-            ),
-            onChanged: (value) {
-              setState(() {
-                searchQuery = value;
-              });
-            },
-          ),
-        ),
-        JogoInfo(
-          isVisible: isVisible,
-          jogo: jogoAtual,
-          onNext: () {
-            setState(() {
-              currentIndex = (currentIndex + 1) % jogos.length;
-            });
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class JogoInfo extends StatelessWidget {
-  const JogoInfo({
-    super.key,
-    required this.isVisible,
-    required this.jogo,
-    required this.onNext,
-  });
-
-  final bool isVisible;
-  final List<dynamic> jogo;
-  final VoidCallback onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!isVisible) {
-      return Expanded(
-        child: Center(
-          child: Text('Nenhum jogo encontrado.'),
-        ),
-      );
+    if (jogoAtual.length < 36) {
+      return Center(child: Text("Dados do jogo incompletos"));
     }
 
-    final header = jogo[12];
-    final about = jogo[8];
-    final price = jogo[6];
-    final genres = jogo[35];
+    final int appid = int.tryParse(jogoAtual[0].toString()) ?? 0;
+    final String header = jogoAtual[12];
+    final String genres = jogoAtual[35];
+    final String name = jogoAtual[1];
 
-    return Expanded(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+    bool isFavorito = appState.favorites.contains(appid);
+
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        if (details.primaryVelocity != null) {
+          if (details.primaryVelocity! > 0) {
+            appState.adicionarAosFavoritos(appid);
+          } else {
+            proximoJogo();
+          }
+        }
+      },
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Capa do jogo
-            SizedBox(
-              height: 200,
-              width: 200,
-              child: Image.network(
-                header,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Icon(
-                  Icons.broken_image,
-                  size: 100,
-                ),
-              ),
-            ),
-            SizedBox(height: 10),
-            // Gênero e preço com ícones usando Wrap
-            Wrap(
-              spacing: 10, // Espaçamento horizontal entre os itens
-              runSpacing: 5, // Espaçamento vertical quando os itens mudam de linha
-              alignment: WrapAlignment.center,
-              children: [
-                // Ícone de gênero
-                Row(
-                  children: [
-                    Icon(Icons.category, color: Colors.blue),
-                    SizedBox(width: 5),
-                    Text(
-                      genres,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-                // Ícone de preço
-                Row(
-                  children: [
-                    Icon(Icons.attach_money, color: Colors.green),
-                    SizedBox(width: 5),
-                    Text(
-                      price.toString(),
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-            // Moldura da história do jogo
             Container(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white,
+                border: Border.all(color: Colors.grey, width: 2),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: Colors.grey.shade400,
-                  width: 1,
-                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
+                    color: Colors.grey.withValues(),
                     spreadRadius: 2,
                     blurRadius: 5,
                     offset: Offset(0, 3),
                   ),
                 ],
               ),
-              child: Text(
-                about,
-                textAlign: TextAlign.justify,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      height: 1.5,
+              child: Stack(
+                children: [
+                  Container(
+                    width: 300,
+                    height: 500,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      image: DecorationImage(
+                        image: NetworkImage(header),
+                        fit: BoxFit.fill,
+                      ),
                     ),
+                  ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: IconButton(
+                      icon: Icon(
+                        isFavorito ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorito ? Colors.red : Colors.white,
+                        size: 30,
+                      ),
+                      onPressed: () {
+                        appState.adicionarAosFavoritos(appid);
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
             SizedBox(height: 20),
-            // Botões
-            ElevatedButton(
-              onPressed: onNext,
-              child: Text('Next'),
+            Text(
+              name,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            Text(
+              genres,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
             ),
           ],
         ),
@@ -1054,74 +983,75 @@ class JogoInfo extends StatelessWidget {
 }
 
 
-class FavoritesPage extends StatefulWidget {
-  @override
-  State <FavoritesPage> createState() => _FavoritesPageState();
-}
 
-class _FavoritesPageState extends State<FavoritesPage> {
-  String searchQuery = '';
-
+class FavoritesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<MyAppState>();
+    final appState = context.watch<MyAppState>();
+    final favoritos = appState.favorites;
+    final jogos = appState.jogos;
 
-    // Filtrar favoritos com base na pesquisa
-    var filteredFavorites = appState.favorites
-        .where((pair) => pair.asLowerCase.contains(searchQuery.toLowerCase()))
-        .toList();
+    var filteredFavorites = jogos.where((jogo) {
+      return favoritos.contains(jogo[0]);
+    }).toList();
 
     return Column(
       children: [
-        // Barra de pesquisa
-        Container( width: double.infinity, // Ocupa toda a largura disponível
-                   height: 60, // Define a altura
-                   padding: EdgeInsets.symmetric(horizontal: 10),
-                   decoration: BoxDecoration(
-                         color: const Color.fromARGB(255, 188, 185, 225),
-                         borderRadius: BorderRadius.circular(15),
-                         boxShadow: [
-                           BoxShadow(
-                                 color: Colors.grey.withOpacity(0.5),
-                                 spreadRadius: 1,
-                                 blurRadius: 5,
-                                 offset: Offset(0, 3), // Sombra com deslocamento
-                              ),
-                            ],
-                          ),
-          
-         
+        Padding(
+          padding: const EdgeInsets.all(10),
           child: TextField(
             decoration: InputDecoration(
               hintText: 'Pesquisar favoritos...',
-              border: InputBorder.none,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               prefixIcon: Icon(Icons.search),
             ),
             onChanged: (value) {
-              setState(() {
-                searchQuery = value;
-              });
+              // Filtra favoritos com base na pesquisa
             },
           ),
         ),
-        // Lista de favoritos
         Expanded(
           child: filteredFavorites.isEmpty
-              ? Center(
-                  child: Text('Nenhum favorito encontrado.'),
-                )
-              : ListView(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Text('Você tem ${filteredFavorites.length} favoritos:'),
-                    ),
-                    for (var pair in filteredFavorites)
-                      ListTile(
-                        leading: Icon(Icons.favorite),
-                        title: Text(pair.asLowerCase),
+              ? Center(child: Text('Nenhum favorito encontrado.'))
+              : ListView.builder(
+                  padding: EdgeInsets.all(10),
+                  itemCount: filteredFavorites.length,
+                  itemBuilder: (context, index) {
+                    var jogo = filteredFavorites[index];
+                    var header = jogo[12]; // URL da capa do jogo
+                    var name = jogo[1];
+
+                    return Card(
+                      elevation: 4,
+                      margin: EdgeInsets.symmetric(vertical: 8),
+                      child: ListTile(
+                        contentPadding: EdgeInsets.all(10),
+                        leading: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            image: DecorationImage(
+                              image: NetworkImage(header),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          name,
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ImageFullScreen(header: header, name: name),
+                            ),
+                          );
+                        },
                       ),
-                  ],
+                    );
+                  },
                 ),
         ),
       ],
@@ -1130,6 +1060,24 @@ class _FavoritesPageState extends State<FavoritesPage> {
 }
 
 
+class ImageFullScreen extends StatelessWidget {
+  final String header;
+  final String name;
+
+  ImageFullScreen({required this.header, required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(name)),
+      body: Center(
+        child: InteractiveViewer(
+          child: Image.network(header, fit: BoxFit.contain),
+        ),
+      ),
+    );
+  }
+}
 
 
 
@@ -1450,6 +1398,8 @@ class SenhaPage extends StatelessWidget {
                               User? user = _auth.currentUser;
                               await user?.updatePassword(_senhaController.text);
 
+                              
+
                               // Exemplo de ação ao confirmar
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Senha atualizada com sucesso!')),
@@ -1500,6 +1450,24 @@ class Note {
     required this.content,
     required this.creationDate,
   });
+
+  // Converte uma nota para Map (para salvar no Firestore)
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'content': content,
+      'creationDate': creationDate.toIso8601String(),
+    };
+  }
+
+  // Cria uma nota a partir de um Map (para ler do Firestore)
+  static Note fromMap(Map<String, dynamic> map) {
+    return Note(
+      title: map['title'],
+      content: map['content'],
+      creationDate: DateTime.parse(map['creationDate']),
+    );
+  }
 }
 
 class NotesPage extends StatefulWidget {
@@ -1512,74 +1480,73 @@ class _NotesPageState extends State<NotesPage> {
   String searchQuery = '';
   TextEditingController titleController = TextEditingController();
   TextEditingController contentController = TextEditingController();
+  late String uid;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserId();
+  }
+
+  // Carrega o UID do usuário
+  Future<void> _loadUserId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      uid = prefs.getString('uid') ?? '';
+    });
+    _fetchNotes();
+  }
+
+  // Função para salvar uma nota no Firebase
+  Future<void> _saveNoteToFirestore(Note note) async {
+    if (uid.isEmpty) return; // Certifique-se de que o UID foi carregado
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('notas')
+          .doc(uid)
+          .collection('userNotes')
+          .add(note.toMap());
+      _fetchNotes(); // Atualiza as notas após salvar
+    } catch (e) {
+      print('Erro ao salvar nota: $e');
+    }
+  }
+
+  // Função para buscar notas do Firebase
+  Future<void> _fetchNotes() async {
+    if (uid.isEmpty) return;
+
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('notas')
+          .doc(uid)
+          .collection('userNotes')
+          .get();
+
+      setState(() {
+        notes = snapshot.docs.map((doc) => Note.fromMap(doc.data() as Map<String, dynamic>)).toList();
+      });
+    } catch (e) {
+      print('Erro ao buscar notas: $e');
+    }
+  }
 
   void addNote() {
     if (titleController.text.isNotEmpty && contentController.text.isNotEmpty) {
-      setState(() {
-        notes.add(Note(
-          title: titleController.text,
-          content: contentController.text,
-          creationDate: DateTime.now(),
-        ));
-      });
+      Note newNote = Note(
+        title: titleController.text,
+        content: contentController.text,
+        creationDate: DateTime.now(),
+      );
+      _saveNoteToFirestore(newNote);
       titleController.clear();
       contentController.clear();
     }
   }
 
-  void editNote(int index) {
-    setState(() {
-      titleController.text = notes[index].title;
-      contentController.text = notes[index].content;
-    });
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Editar Nota'),
-          content: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: InputDecoration(labelText: 'Título'),
-              ),
-              SizedBox(height: 8),
-              TextField(
-                controller: contentController,
-                maxLines: 4,
-                decoration: InputDecoration(labelText: 'Conteúdo'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  notes[index].title = titleController.text;
-                  notes[index].content = contentController.text;
-                });
-                Navigator.pop(context);
-              },
-              child: Text('Salvar'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text('Cancelar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Filtra as notas com base na pesquisa
     var filteredNotes = notes.where((note) {
       return note.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
           note.content.toLowerCase().contains(searchQuery.toLowerCase());
@@ -1592,7 +1559,6 @@ class _NotesPageState extends State<NotesPage> {
       ),
       body: Column(
         children: [
-          // Barra de pesquisa com estilo similar ao GeneratorPage
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Container(
@@ -1604,7 +1570,7 @@ class _NotesPageState extends State<NotesPage> {
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color.fromARGB(255, 123, 115, 115).withOpacity(0.5),
+                    color: const Color.fromARGB(255, 123, 115, 115).withValues(),
                     spreadRadius: 1,
                     blurRadius: 5,
                     offset: Offset(0, 3),
@@ -1625,14 +1591,11 @@ class _NotesPageState extends State<NotesPage> {
               ),
             ),
           ),
-          
-          // Lista de notas filtradas
           Expanded(
             child: ListView.builder(
               itemCount: filteredNotes.length,
               itemBuilder: (context, index) {
                 final note = filteredNotes[index];
-                // Ajuste para exibir no máximo os primeiros 30 caracteres
                 String previewContent = note.content.length > 30
                     ? '${note.content.substring(0, 30)}...'
                     : note.content;
@@ -1642,16 +1605,12 @@ class _NotesPageState extends State<NotesPage> {
                     '$previewContent | ${note.creationDate.toLocal()}',
                     overflow: TextOverflow.ellipsis,
                   ),
-                  onTap: () => editNote(index), // Chama a função de editar ao clicar
                 );
               },
             ),
           ),
-
-          // Formulário para adicionar nova nota
           Padding(
             padding: const EdgeInsets.all(8.0),
-            
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -1672,9 +1631,12 @@ class _NotesPageState extends State<NotesPage> {
                 ElevatedButton(
                   onPressed: addNote,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color.fromARGB(255, 188, 185, 225) // Cor do botão
+                    backgroundColor: Color.fromARGB(255, 188, 185, 225),
                   ),
-                  child: Text('Adicionar Nota',style: TextStyle(color: Colors.black),),
+                  child: Text(
+                    'Adicionar Nota',
+                    style: TextStyle(color: Colors.black),
+                  ),
                 ),
               ],
             ),
@@ -1684,11 +1646,6 @@ class _NotesPageState extends State<NotesPage> {
     );
   }
 }
-
-
-
-
-
 
 
 
@@ -1743,8 +1700,10 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
           const SnackBar(content: Text('Conta apagada com sucesso')),
         );
       }
+      if (mounted){
 
-      Navigator.of(context).pop();
+      Navigator.of(context).pop();}
+
     } on FirebaseAuthException catch (e) {
       String message = 'Erro ao apagar conta.';
       if (e.code == 'wrong-password') {
@@ -1943,8 +1902,11 @@ class _DeleteProfilePageState extends State<DeleteProfilePage> {
           const SnackBar(content: Text('Perfil excluído com sucesso')),
         );
       }
+      if (mounted){
 
-      Navigator.of(context).pop();
+      Navigator.of(context).pop();}
+
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2041,6 +2003,7 @@ class _DeleteProfilePageState extends State<DeleteProfilePage> {
   }
 }
 
+
 class Pesquisa extends StatefulWidget {
   @override
   State<Pesquisa> createState() => _PesquisaState();
@@ -2049,6 +2012,8 @@ class Pesquisa extends StatefulWidget {
 class _PesquisaState extends State<Pesquisa> {
   String searchQuery = '';
   List<List<dynamic>> jogos = [];
+  List<List<dynamic>> jogosFiltrados = [];
+  List<List<dynamic>> sugestoes = [];  // Armazenar sugestões
   int currentIndex = 0;
 
   @override
@@ -2064,64 +2029,458 @@ class _PesquisaState extends State<Pesquisa> {
 
     setState(() {
       jogos = data;
+      jogosFiltrados = List.from(jogos);
+      sugestoes = List.from(jogos);  // Inicializa as sugestões com todos os jogos
+    });
+  }
+
+  void filtrarJogos(String query) {
+    setState(() {
+      searchQuery = query;
+      // Filtra os jogos com base no nome (assumindo que o nome do jogo esteja na posição 1)
+      jogosFiltrados = jogos
+          .where((jogo) => jogo[1].toString().toLowerCase().contains(query.toLowerCase()))
+          .toList();
+      sugestoes = jogosFiltrados;  // Atualiza as sugestões com base na pesquisa
+      currentIndex = 0; // Resetar o índice ao filtrar
+    });
+  }
+
+  void proximoJogo() {
+    setState(() {
+      if (currentIndex < jogosFiltrados.length - 1) {
+        currentIndex++;
+      } else {
+        currentIndex = 0;
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (jogos.isEmpty) {
-      return Center(child: CircularProgressIndicator());
-    }
+    return Scaffold(
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              height: 60,
+              padding: EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 188, 185, 225),
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withValues(),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Pesquisar jogo...',
+                  border: InputBorder.none,
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: filtrarJogos,
+              ),
+            ),
+            if (searchQuery.isNotEmpty && sugestoes.isNotEmpty)
+              SizedBox(
+                height: 200,  // Defina a altura da lista de sugestões
+                child: ListView.builder(
+                  itemCount: sugestoes.length,
+                  itemBuilder: (context, index) {
+                    final jogo = sugestoes[index];
+                    return ListTile(
+                      title: Text(jogo[1].toString()),  // Exibe o nome do jogo
+                      onTap: () {
+                        setState(() {
+                          searchQuery = jogo[1].toString();
+                          jogosFiltrados = [jogo];  // Exibe apenas o jogo selecionado
+                          currentIndex = 0;
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+            if (jogosFiltrados.isNotEmpty)
+              Jogos(jogo: jogosFiltrados[currentIndex]),
+            if (jogosFiltrados.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: ElevatedButton(
+                  onPressed: proximoJogo,
+                  child: Text('Próximo Jogo'),
+                ),
+              ),
+            if (jogosFiltrados.isEmpty)
+              Center(child: Text('Nenhum jogo encontrado.')),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-    final jogoAtual = jogos[currentIndex];
-    final isVisible = searchQuery.isEmpty ||
-        jogoAtual[8]
-            .toString()
-            .toLowerCase()
-            .contains(searchQuery.toLowerCase());
 
-    return Column(
-      children: [
-        // Barra de pesquisa
-        Container(
-          width: double.infinity,
-          height: 60,
-          padding: EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 188, 185, 225),
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.5),
-                spreadRadius: 1,
-                blurRadius: 5,
-                offset: Offset(0, 3),
+class Jogos extends StatelessWidget {
+  const Jogos({super.key, required this.jogo});
+
+  final List<dynamic> jogo;
+
+  @override
+  Widget build(BuildContext context) {
+    final header = jogo[12];
+    final about = jogo[8];
+    final price = jogo[6];
+    final genres = jogo[35];
+    final name = jogo[1];
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            height: 200,
+            width: 200,
+            child: Image.network(
+              header,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Icon(
+                Icons.broken_image,
+                size: 100,
+              ),
+            ),
+          ),
+          SizedBox(height: 10),
+          Text(name, style: Theme.of(context).textTheme.bodyMedium),
+          Wrap(
+            spacing: 10,
+            runSpacing: 5,
+            alignment: WrapAlignment.center,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.category, color: Colors.blue),
+                  SizedBox(width: 5),
+                  // Limita o tamanho do texto do gênero com TextOverflow.ellipsis
+                  Text(
+                    genres,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1, // Limita para 1 linha
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.attach_money, color: Colors.green),
+                  SizedBox(width: 5),
+                  Text(price.toString(),
+                      style: Theme.of(context).textTheme.bodyMedium),
+                ],
               ),
             ],
           ),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Pesquisar jogo...',
-              border: InputBorder.none,
-              prefixIcon: Icon(Icons.search),
+          SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: Colors.grey.shade400,
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withValues(),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                  offset: Offset(0, 3),
+                ),
+              ],
             ),
-            onChanged: (value) {
-              setState(() {
-                searchQuery = value;
-              });
-            },
+            child: Text(
+              about,
+              textAlign: TextAlign.justify,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    height: 1.5,
+                  ),
+            ),
           ),
-        ),
-        JogoInfo(
-          isVisible: isVisible,
-          jogo: jogoAtual,
-          onNext: () {
-            setState(() {
-              currentIndex = (currentIndex + 1) % jogos.length;
-            });
+        ],
+      ),
+    );
+  }
+}
+
+
+
+
+class QuizPage extends StatefulWidget {
+  @override
+  State<QuizPage> createState() => _QuizPageState();
+}
+
+class _QuizPageState extends State<QuizPage> {
+  final _formKey = GlobalKey<FormState>();
+  String? plataforma;
+  String? preferenciaJogos;
+  String? generoJogo;
+  String? tagJogo;
+  TextEditingController plataformaController = TextEditingController();
+  TextEditingController preferenciaJogosController = TextEditingController();
+  TextEditingController generoJogoController = TextEditingController();
+  TextEditingController tagJogoController = TextEditingController();
+
+  final List<String> plataformas = ['Windows', 'Linux', 'Mac'];
+  final List<String> preferenciasJogos = ['Single-Player', 'Multi-Player'];
+  final List<String> gameGenres = [
+    'Action', 'Adventure', 'RPG', 'Strategy', 'Horror', 'Racing', 
+    'Sports', 'Simulation', 'Puzzle', 'FPS', 'Open World'
+  ];
+  final List<String> gameTags = [
+    'Retro', 'Co-op', 'Battle Royale', 'Rich Story', 'Online Multiplayer', 
+    'Casual', 'Indie', 'Exploration', 'Survival', 'Hack and Slash'
+  ];
+
+  final FirebaseServiceQUiz _firebaseService = FirebaseServiceQUiz();
+  final RecomendacaoService _recomendacaoService = RecomendacaoService();
+
+  Future<void> _salvarRespostasNoFirestore() async {
+  await _firebaseService.salvarRespostas(plataforma, preferenciaJogos, generoJogo, tagJogo);
+  List<String> recomendacoes = await _buscarRecomendacoes();
+
+  if (mounted) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MyHomePage(),
+        settings: RouteSettings(
+          arguments: {
+            'plataforma': plataforma,
+            'preferenciaJogos': preferenciaJogos,
+            'generoJogo': generoJogo,
+            'tagJogo': tagJogo,
+            'recomendacoes': recomendacoes, // Passando as recomendações para a Home
           },
         ),
-      ],
+      ),
+    );
+  }
+}
+
+
+  Future<List<String>> _buscarRecomendacoes() async {
+    try {
+      return await _recomendacaoService.buscarRecomendacoes(
+        plataforma: plataforma ?? "",
+        categoria: preferenciaJogos ?? "",
+        genero: generoJogo ?? "",
+        tag: tagJogo ?? "",
+      );
+    } catch (e) {
+      print("Erro ao buscar recomendações: $e");
+      return [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Color.fromARGB(255, 188, 185, 225),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height * 0.3,
+                decoration: BoxDecoration(color: Color.fromARGB(255, 188, 185, 225)),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Quiz de Preferências",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(70)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      SizedBox(height: 20),
+                      // Plataforma
+                      TextFormField(
+                        controller: plataformaController,
+                        decoration: InputDecoration(
+                          labelText: 'Qual plataforma você prefere?',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            plataforma = value;
+                          });
+                        },
+                        validator: (value) => value == null || value.isEmpty ? 'Selecione ou digite a Plataforma' : null,
+                      ),
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Ou selecione uma das opções',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        value: plataforma?.isEmpty == true ? null : plataforma,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            plataforma = newValue;
+                            plataformaController.clear();
+                          });
+                        },
+                        items: plataformas.map((plataforma) => DropdownMenuItem<String>(
+                          value: plataforma,
+                          child: Text(plataforma),
+                        )).toList(),
+                      ),
+                      SizedBox(height: 20),
+                      // Preferência Jogos
+                      TextFormField(
+                        controller: preferenciaJogosController,
+                        decoration: InputDecoration(
+                          labelText: 'Você prefere Single-Player ou Multi-Player?',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            preferenciaJogos = value;
+                          });
+                        },
+                        validator: (value) => value == null || value.isEmpty ? 'Selecione ou digite uma opção' : null,
+                      ),
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Ou selecione uma das opções',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        value: preferenciaJogos?.isEmpty == true ? null : preferenciaJogos,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            preferenciaJogos = newValue;
+                            preferenciaJogosController.clear();
+                          });
+                        },
+                        items: preferenciasJogos.map((preferencia) => DropdownMenuItem<String>(
+                          value: preferencia,
+                          child: Text(preferencia),
+                        )).toList(),
+                      ),
+                      SizedBox(height: 20),
+                      // Gênero Jogo
+                      TextFormField(
+                        controller: generoJogoController,
+                        decoration: InputDecoration(
+                          labelText: 'Escolha o Gênero',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            generoJogo = value;
+                          });
+                        },
+                        validator: (value) => value == null || value.isEmpty ? 'Selecione ou digite o Gênero' : null,
+                      ),
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Ou selecione uma das opções',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        value: generoJogo?.isEmpty == true ? null : generoJogo,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            generoJogo = newValue;
+                            generoJogoController.clear();
+                          });
+                        },
+                        items: gameGenres.map((genre) => DropdownMenuItem<String>(
+                          value: genre,
+                          child: Text(genre),
+                        )).toList(),
+                      ),
+                      SizedBox(height: 20),
+                      // Tag Jogo
+                      TextFormField(
+                        controller: tagJogoController,
+                        decoration: InputDecoration(
+                          labelText: 'Escolha a Tag (Opcional)',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            tagJogo = value;
+                          });
+                        },
+                      ),
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Ou selecione uma das opções',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        value: tagJogo?.isEmpty == true ? null : tagJogo,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            tagJogo = newValue;
+                            tagJogoController.clear();
+                          });
+                        },
+                        items: gameTags.map((tag) => DropdownMenuItem<String>(
+                          value: tag,
+                          child: Text(tag),
+                        )).toList(),
+                      ),
+                      SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            _formKey.currentState?.save();
+                            _salvarRespostasNoFirestore();
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                          padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                        ),
+                        child: Text('Salvar e Continua'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

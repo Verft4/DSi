@@ -11,11 +11,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  csv: ^5.0.1
+  csv: ^6.0.0
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.4
   cloud_firestore: ^5.5.0
   shared_preferences: ^2.0.0
+  http: ^0.13.5
+  
   
 
   english_words: ^4.0.0
@@ -25,13 +27,12 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^2.0.0
+  flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true
    # Adicione ou altere para 23
 
   assets:
-  - assets/games.csv
   - assets/dataset_filtrado.csv
   

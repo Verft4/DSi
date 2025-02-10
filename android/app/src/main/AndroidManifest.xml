@@ -1,6 +1,7 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.namer_app">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.seuprojeto.namerapp">          
     <application
-        android:label="namer_app"
+        android:label="app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

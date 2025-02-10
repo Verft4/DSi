@@ -1,21 +1,16 @@
+# app
 
-As adições começaram a partir do codigo do main
+A new Flutter project.
 
+## Getting Started
 
-Adição 0.1
+This project is a starting point for a Flutter application.
 
-remodelação da login page ,
-adição de uma nova tela(Provavel tela de refazer senha )
+A few resources to get you started if this is your first Flutter project:
 
+- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
-Adição 0.2
-
-criação de 3 telas (recriação de senha,cadastro e notas)
-
-adição 0.3
-
-Crud Parcial (creat,uptade,read)
-
-adição 0.4
-
-Crud completo
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.

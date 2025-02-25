@@ -10,5 +10,5 @@ export 'package:firebase_auth/firebase_auth.dart';
 export 'package:shared_preferences/shared_preferences.dart';
 export  'dart:convert';
 export 'dart:math';
-
- 
+export 'package:flutter_map/flutter_map.dart';
+export 'package:geocoding/geocoding.dart';

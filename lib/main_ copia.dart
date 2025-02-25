@@ -1,7 +1,11 @@
 
+
+
 import 'bibliotecas.dart';
 import 'firebase.dart';
 
+import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
 
 
 void main() async {
@@ -758,6 +762,9 @@ class _MyHomePageState extends State<MyHomePage> {
       case 5 :
       page = QuizPage();
         break;
+      case 6:
+      page = MapaJogosScreen();
+       break;
     }
 
     return Scaffold(
@@ -2480,6 +2487,134 @@ class _QuizPageState extends State<QuizPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+
+
+
+
+
+
+
+
+class MapaJogosScreen extends StatefulWidget {
+  @override
+  MapaJogosScreenState createState() => MapaJogosScreenState();
+}
+
+class MapaJogosScreenState extends State<MapaJogosScreen> {
+  final MapController _mapController = MapController();
+  final TextEditingController _searchController = TextEditingController();
+  LatLng _currentLocation = LatLng(-8.0476, -34.8770); // Recife como ponto inicial
+  bool _locationLoaded = false;
+
+  List<LatLng> _gameLocations = [
+    LatLng(35.6895, 139.6917), // Tóquio (Nintendo, Sony)
+    LatLng(47.4925, 19.0513), // Budapeste (CD Projekt Red)
+    LatLng(37.7749, -122.4194), // São Francisco (Ubisoft SF)
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted){
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Por favor, ative a localização")),
+      );}
+      await Geolocator.openLocationSettings();
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted){
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Permissão negada permanentemente")),
+        );}
+        return;
+      }
+    }
+
+    Position position = await Geolocator.getCurrentPosition();
+    if (mounted){
+    setState(() {
+      _currentLocation = LatLng(position.latitude, position.longitude);
+      _locationLoaded = true;
+      _mapController.move(_currentLocation, 12.0);
+    });}
+  }
+
+  Future<void> _searchLocation() async {
+    // Aqui você pode implementar a busca de localização com geocoding
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Mapa de Jogos")),
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(hintText: "Pesquisar localização"),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.search),
+                  onPressed: _searchLocation,
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(initialCenter: _currentLocation, initialZoom: 12.0),
+              children: [
+                TileLayer(
+                  urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                ),
+                MarkerLayer(
+                  markers: [
+                    if (_locationLoaded)
+                      Marker(
+                        width: 40.0,
+                        height: 40.0,
+                        point: _currentLocation,
+                        child: Icon(Icons.location_pin, color: Colors.blue, size: 30.0),
+                      ),
+                    ..._gameLocations.map((location) => Marker(
+                          width: 40.0,
+                          height: 40.0,
+                          point: location,
+                          child: Icon(Icons.videogame_asset, color: Colors.red, size: 30.0),
+                        )),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

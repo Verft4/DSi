@@ -21,7 +21,6 @@ class AuthService {
 
 
 
-
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -38,9 +37,6 @@ class FirestoreService {
 
 
 
-
-
-
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -52,15 +48,6 @@ class FirebaseAuthService {
     }
   }
 }
-
-
-
-
-
-
-
-
-
 
 
 
@@ -95,7 +82,7 @@ class FirebaseServiceQUiz {
 
 
 class RecomendacaoService {
-  final String baseUrl = "http://127.0.0.1:5000"; // Altere para o IP correto
+  final String baseUrl = "http://127.0.0.1:5000";
 
   Future<List<String>> buscarRecomendacoes({
     required String plataforma,
@@ -124,3 +111,4 @@ class RecomendacaoService {
     }
   }
 }
+

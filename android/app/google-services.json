@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "401585275031",
+    "project_id": "device-streaming-0f7fe1c5",
+    "storage_bucket": "device-streaming-0f7fe1c5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:401585275031:android:24d54bd69ffb10c2ace9d2",
+        "android_client_info": {
+          "package_name": "com.example.namer_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2yFrgYc3yWNMGZk6vvedM3LcRv3SvdzM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

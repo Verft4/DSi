@@ -19,3 +19,7 @@ Crud Parcial (creat,uptade,read)
 adição 0.4
 
 Crud completo
+
+adicção 0.5
+
+Atualização do pubsc.yaml e da pasta android 

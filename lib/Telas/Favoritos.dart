@@ -11,7 +11,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
   @override
   void initState() {
     super.initState();
-    // Load favorites from Firestore when the page is initialized
     final appState = context.read<MyAppState>();
     appState.carregarFavoritosDoFirestore();
   }
@@ -22,9 +21,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
     final favoritos = appState.favorites;
     final jogos = appState.jogos;
 
-    var filteredFavorites = jogos.where((jogo) {
-      return favoritos.contains(jogo[0]);
-    }).toList();
+    var filteredFavorites = jogos.where((jogo) => favoritos.contains(jogo[0])).toList();
 
     return Column(
       children: [
@@ -36,9 +33,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               prefixIcon: Icon(Icons.search),
             ),
-            onChanged: (value) {
-              // Filtra favoritos com base na pesquisa
-            },
           ),
         ),
         Expanded(
@@ -49,45 +43,58 @@ class _FavoritesPageState extends State<FavoritesPage> {
                   itemCount: filteredFavorites.length,
                   itemBuilder: (context, index) {
                     var jogo = filteredFavorites[index];
-                    var header = jogo[12]; // URL da capa do jogo
+                    var header = jogo[12];
                     var name = jogo[1];
-                    var appid = jogo[0]; // ID do jogo
+                    var appid = jogo[0];
 
-                    return Card(
-                      elevation: 4,
-                      margin: EdgeInsets.symmetric(vertical: 8),
-                      child: ListTile(
-                        contentPadding: EdgeInsets.all(10),
-                        leading: Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            image: DecorationImage(
-                              image: NetworkImage(header),
-                              fit: BoxFit.cover,
+                    return Dismissible(
+                      key: Key(appid.toString()),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        color: Colors.red,
+                        alignment: Alignment.centerRight,
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        child: Icon(Icons.delete, color: Colors.white),
+                      ),
+                      onDismissed: (direction) async {
+                        final appState = context.read<MyAppState>();
+                        await appState.removerDosFavoritos(appid);
+                      },
+                      child: Card(
+                        elevation: 4,
+                        margin: EdgeInsets.symmetric(vertical: 8),
+                        child: ListTile(
+                          contentPadding: EdgeInsets.all(10),
+                          leading: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              image: DecorationImage(
+                                image: NetworkImage(header),
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
-                        ),
-                        title: Text(
-                          name,
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        trailing: IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () async {
-                            final appState = context.read<MyAppState>();
-                            await appState.removerDosFavoritos(appid);
+                          title: Text(
+                            name,
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          trailing: IconButton(
+                            icon: Icon(Icons.delete, color: Colors.red),
+                            onPressed: () async {
+                              await appState.removerDosFavoritos(appid);
+                            },
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ImageFullScreen(header: header, name: name),
+                              ),
+                            );
                           },
                         ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ImageFullScreen(header: header, name: name),
-                            ),
-                          );
-                        },
                       ),
                     );
                   },
@@ -97,6 +104,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 }
+
+
 class ImageFullScreen extends StatelessWidget {
   final String header;
   final String name;

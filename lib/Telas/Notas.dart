@@ -1,21 +1,33 @@
 import 'package:namer_app/bibliotecas.dart'; 
-
-
-
-
+import 'package:intl/intl.dart'; 
+import 'package:namer_app/firebase.dart';
 
 class Note {
+  String? id;
   String title;
   String content;
   DateTime creationDate;
 
   Note({
+    this.id,
     required this.title,
     required this.content,
     required this.creationDate,
   });
+  Note copyWith({
+    String? id,
+    String? title,
+    String? content,
+    DateTime? creationDate,
+  }) {
+    return Note(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      content: content ?? this.content,
+      creationDate: creationDate ?? this.creationDate,
+    );
+  }
 
-  // Converte uma nota para Map (para salvar no Firestore)
   Map<String, dynamic> toMap() {
     return {
       'title': title,
@@ -24,12 +36,13 @@ class Note {
     };
   }
 
-  // Cria uma nota a partir de um Map (para ler do Firestore)
-  static Note fromMap(Map<String, dynamic> map) {
+  static Note fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Note(
-      title: map['title'],
-      content: map['content'],
-      creationDate: DateTime.parse(map['creationDate']),
+      id: doc.id,
+      title: data['title'],
+      content: data['content'],
+      creationDate: DateTime.parse(data['creationDate']),
     );
   }
 }
@@ -40,10 +53,9 @@ class NotesPage extends StatefulWidget {
 }
 
 class _NotesPageState extends State<NotesPage> {
+  final NoteService _noteService = NoteService();
   List<Note> notes = [];
   String searchQuery = '';
-  TextEditingController titleController = TextEditingController();
-  TextEditingController contentController = TextEditingController();
   late String uid;
 
   @override
@@ -52,160 +64,164 @@ class _NotesPageState extends State<NotesPage> {
     _loadUserId();
   }
 
-  // Carrega o UID do usuário
   Future<void> _loadUserId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      uid = prefs.getString('uid') ?? '';
-    });
+    setState(() => uid = prefs.getString('uid') ?? '');
     _fetchNotes();
   }
 
-  // Função para salvar uma nota no Firebase
-  Future<void> _saveNoteToFirestore(Note note) async {
-    if (uid.isEmpty) return; // Certifique-se de que o UID foi carregado
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('notas')
-          .doc(uid)
-          .collection('userNotes')
-          .add(note.toMap());
-      _fetchNotes(); // Atualiza as notas após salvar
-    } catch (e) {
-      print('Erro ao salvar nota: $e');
-    }
-  }
-
-  // Função para buscar notas do Firebase
   Future<void> _fetchNotes() async {
     if (uid.isEmpty) return;
-
     try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('notas')
-          .doc(uid)
-          .collection('userNotes')
-          .get();
-
-      setState(() {
-        notes = snapshot.docs.map((doc) => Note.fromMap(doc.data() as Map<String, dynamic>)).toList();
-      });
+      List<Note> fetchedNotes = await _noteService.fetchNotes(uid);
+      setState(() => notes = fetchedNotes);
     } catch (e) {
       print('Erro ao buscar notas: $e');
     }
   }
 
-  void addNote() {
-    if (titleController.text.isNotEmpty && contentController.text.isNotEmpty) {
-      Note newNote = Note(
-        title: titleController.text,
-        content: contentController.text,
-        creationDate: DateTime.now(),
-      );
-      _saveNoteToFirestore(newNote);
-      titleController.clear();
-      contentController.clear();
-    }
+  void _showAddNoteDialog() {
+    TextEditingController titleController = TextEditingController();
+    TextEditingController contentController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _buildNoteEditor(
+        title: 'Adicionar Nota',
+        titleController: titleController,
+        contentController: contentController,
+        onSave: () async {
+          if (titleController.text.isNotEmpty && contentController.text.isNotEmpty) {
+            await _noteService.saveNote(uid, Note(
+              title: titleController.text,
+              content: contentController.text,
+              creationDate: DateTime.now(),
+            ));
+            _fetchNotes();
+            if (mounted){
+            Navigator.pop(context);}
+          }
+        },
+      ),
+    );
+  }
+
+  void _showEditNoteDialog(Note note) {
+    TextEditingController titleController = TextEditingController(text: note.title);
+    TextEditingController contentController = TextEditingController(text: note.content);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _buildNoteEditor(
+        title: 'Editar Nota',
+        titleController: titleController,
+        contentController: contentController,
+        onSave: () async {
+          if (titleController.text.isNotEmpty && contentController.text.isNotEmpty) {
+            await _noteService.updateNote(uid, note.copyWith(
+              title: titleController.text,
+              content: contentController.text,
+            ));
+            _fetchNotes();
+            if (mounted){
+            Navigator.pop(context);}
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildNoteEditor({
+    required String title,
+    required TextEditingController titleController,
+    required TextEditingController contentController,
+    required VoidCallback onSave,
+  }) {
+    return Padding(
+      padding: MediaQuery.of(context).viewInsets.add(EdgeInsets.all(16)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          SizedBox(height: 12),
+          TextField(controller: titleController, decoration: InputDecoration(labelText: 'Título')),
+          SizedBox(height: 12),
+          TextField(controller: contentController, maxLines: 3, decoration: InputDecoration(labelText: 'Conteúdo')),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: onSave,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color.fromARGB(255, 188, 185, 225),
+              padding: EdgeInsets.symmetric(horizontal: 50, vertical: 12),
+            ),
+            child: Text(title.startsWith('Adicionar') ? 'Salvar Nota' : 'Atualizar Nota'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    var filteredNotes = notes.where((note) {
+    final filteredNotes = notes.where((note) {
       return note.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
           note.content.toLowerCase().contains(searchQuery.toLowerCase());
     }).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Notas'),
+        title: Text('Minhas Notas'),
         backgroundColor: Color.fromARGB(255, 188, 185, 225),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Container(
-              width: double.infinity,
-              height: 60,
-              padding: EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 188, 185, 225),
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color.fromARGB(255, 123, 115, 115).withValues(),
-                    spreadRadius: 1,
-                    blurRadius: 5,
-                    offset: Offset(0, 3),
-                  ),
-                ],
+            padding: EdgeInsets.all(16),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Pesquisar notas...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                filled: true,
               ),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Pesquisar Notas...',
-                  border:  OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  prefixIcon: Icon(Icons.search),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    searchQuery = value;
-                  });
-                },
-              ),
+              onChanged: (value) => setState(() => searchQuery = value),
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: filteredNotes.length,
-              itemBuilder: (context, index) {
-                final note = filteredNotes[index];
-                String previewContent = note.content.length > 30
-                    ? '${note.content.substring(0, 30)}...'
-                    : note.content;
-                return ListTile(
-                  title: Text(note.title),
-                  subtitle: Text(
-                    '$previewContent | ${note.creationDate.toLocal()}',
-                    overflow: TextOverflow.ellipsis,
+            child: filteredNotes.isEmpty
+                ? Center(child: Text('Nenhuma nota encontrada'))
+                : ListView.builder(
+                    itemCount: filteredNotes.length,
+                    itemBuilder: (context, index) => _buildNoteItem(filteredNotes[index]),
                   ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                TextField(
-                  controller: titleController,
-                  decoration: InputDecoration(
-                    labelText: 'Título da Nota',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 8),
-                TextField(
-                  controller: contentController,
-                  maxLines: 4,
-                  decoration: InputDecoration(labelText: 'Conteúdo da Nota'),
-                ),
-                SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: addNote,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color.fromARGB(255, 188, 185, 225),
-                  ),
-                  child: Text(
-                    'Adicionar Nota',
-                    style: TextStyle(color: Colors.black),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddNoteDialog,
+        backgroundColor: Color.fromARGB(255, 188, 185, 225),
+        child: Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildNoteItem(Note note) {
+    return Dismissible(
+      key: Key(note.id!),
+      background: Container(color: Colors.red, alignment: Alignment.centerLeft, child: Icon(Icons.delete)),
+      onDismissed: (_) async {
+        await _noteService.deleteNote(uid, note.id!);
+        _fetchNotes();
+      },
+      child: Card(
+        child: ListTile(
+          title: Text(note.title),
+          subtitle: Text(note.content),
+          trailing: Text(DateFormat('dd/MM/yyyy').format(note.creationDate)),
+          onTap: () => _showEditNoteDialog(note),
+        ),
       ),
     );
   }

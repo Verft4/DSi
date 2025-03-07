@@ -1,6 +1,7 @@
 
 import 'bibliotecas.dart';
-import 'package:http/http.dart' as http;
+import 'Telas/Notas.dart';
+
 
 
 class AuthService {
@@ -80,35 +81,43 @@ class FirebaseServiceQUiz {
   }
 }
 
+class NoteService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-class RecomendacaoService {
-  final String baseUrl = "http://127.0.0.1:5000";
+  Future<void> deleteNote(String uid, String noteId) async {
+    await _firestore
+        .collection('notas')
+        .doc(uid)
+        .collection('userNotes')
+        .doc(noteId)
+        .delete();
+  }
 
-  Future<List<String>> buscarRecomendacoes({
-    required String plataforma,
-    required String categoria,
-    required String genero,
-    required String tag,
-  }) async {
-    final url = Uri.parse('$baseUrl/recomendar');
+  Future<void> saveNote(String uid, Note note) async {
+    await _firestore
+        .collection('notas')
+        .doc(uid)
+        .collection('userNotes')
+        .add(note.toMap());
+  }
 
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "plataforma": plataforma,
-        "categoria": categoria,
-        "genero": genero,
-        "tag": tag,
-      }),
-    );
+  Future<void> updateNote(String uid, Note note) async {
+    await _firestore
+        .collection('notas')
+        .doc(uid)
+        .collection('userNotes')
+        .doc(note.id)
+        .update(note.toMap());
+  }
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return List<String>.from(data["recomendacoes"]);
-    } else {
-      throw Exception("Erro ao buscar recomendações");
-    }
+  Future<List<Note>> fetchNotes(String uid) async {
+    QuerySnapshot snapshot = await _firestore
+        .collection('notas')
+        .doc(uid)
+        .collection('userNotes')
+        .get();
+    return snapshot.docs.map((doc) => Note.fromFirestore(doc)).toList();
   }
 }
+
 

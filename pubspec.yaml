@@ -23,6 +23,8 @@ dependencies:
   geolocator: ^9.0.0
   flutter_spinkit: ^5.1.0
   url_launcher: ^6.1.14
+  intl: ^0.20.2
+  image_picker: ^1.1.2
   
   
   
@@ -42,5 +44,8 @@ flutter:
 
   assets:
   - assets/dataset_filtrado.csv
+  - assets/images/gato1.jpeg
+  - assets/images/gato2.jpg
+  - assets/images/gato3.jpg
   
   

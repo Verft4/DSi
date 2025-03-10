@@ -1,6 +1,7 @@
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:namer_app/bibliotecas.dart';
+import 'package:http/http.dart' as http;
 
 
 
@@ -15,20 +16,20 @@ class MapaJogosScreenState extends State<MapaJogosScreen> {
   LatLng _currentLocation = LatLng(-8.0476, -34.8770); // Recife como ponto inicial
   bool _locationLoaded = false;
 
-  // Lista de localizações de jogos (fixa)
+  // Lista fixa de localizações de jogos
   List<LatLng> _gameLocations = [
     LatLng(35.6895, 139.6917), // Tóquio (Nintendo, Sony)
-    LatLng(47.4925, 19.0513), // Budapeste (CD Projekt Red)
-    LatLng(37.7749, -122.4194), // São Francisco (Ubisoft SF)
+    LatLng(47.4925, 19.0513),  // Budapeste (CD Projekt Red)
+    LatLng(37.7749, -122.4194),// São Francisco (Ubisoft SF)
     LatLng(35.6895, 139.6917), // Tóquio (Nintendo, Sony)
-    LatLng(47.4925, 19.0513), // Budapeste (CD Projekt Red)
-    LatLng(37.7749, -122.4194), // São Francisco (Ubisoft SF)
-    LatLng(-8.0632, -34.8711), // Recife (CESAR - Centro de Estudos e Sistemas Avançados do Recife)
-    LatLng(-8.0522, -34.9027), // Recife (Porto Digital - Polo de Tecnologia e Jogos)
-    LatLng(-8.0628, -34.8714), // Recife (JoyMasher - Estúdio indie de games)
-    LatLng(-8.0476, -34.8770), // Recife (Ambev Tech - Apoio a startups de jogos)
-    LatLng(-8.0591, -34.8860), // Recife (Recife Game Festival - Evento de games)
-    LatLng(-8.0539, -34.8811), // Recife (Epic Game Jam - Evento de desenvolvimento de jogos)
+    LatLng(47.4925, 19.0513),  // Budapeste (CD Projekt Red)
+    LatLng(37.7749, -122.4194),// São Francisco (Ubisoft SF)
+    LatLng(-8.0632, -34.8711), // Recife (CESAR)
+    LatLng(-8.0522, -34.9027), // Recife (Porto Digital)
+    LatLng(-8.0628, -34.8714), // Recife (JoyMasher)
+    LatLng(-8.0476, -34.8770), // Recife (Ambev Tech)
+    LatLng(-8.0591, -34.8860), // Recife (Recife Game Festival)
+    LatLng(-8.0539, -34.8811), // Recife (Epic Game Jam)
   ];
 
   // Lista de detalhes para cada localização de jogo
@@ -67,6 +68,9 @@ class MapaJogosScreenState extends State<MapaJogosScreen> {
     },
   ];
   int _selectedStyleIndex = 0;
+
+  // Lista para armazenar os marcadores de POI relacionados a jogos obtidos do OpenStreetMap
+  List<Marker> _gamePOIMarkers = [];
 
   @override
   void initState() {
@@ -117,6 +121,9 @@ class MapaJogosScreenState extends State<MapaJogosScreen> {
           _locationLoaded = true;
         });
 
+        // Chama a função para buscar POIs relacionados a jogos
+        _fetchGamePOIs();
+
         // Aguarda um pequeno tempo para garantir que o mapa esteja pronto antes de mover
         Future.delayed(Duration(milliseconds: 500), () {
           if (mounted) {
@@ -133,37 +140,91 @@ class MapaJogosScreenState extends State<MapaJogosScreen> {
     }
   }
 
-  void _showUserMarkerOptions(int index) {
-  showModalBottomSheet(
-    context: context,
-    builder: (context) {
-      return Container(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _userAddedDetails[index],
-              style: TextStyle(fontSize: 18),
-            ),
-            SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _userAddedMarkers.removeAt(index);
-                  _userAddedDetails.removeAt(index);
-                });
-                Navigator.of(context).pop();
-              },
-              child: Text("Apagar ponto"),
-            ),
-          ],
-        ),
+  // Função para buscar POIs relacionados a jogos via Overpass API (OpenStreetMap)
+  Future<void> _fetchGamePOIs() async {
+    final double lat = _currentLocation.latitude;
+    final double lon = _currentLocation.longitude;
+    final int radius = 10000; // Raio de 5km
+    final String query = """
+      [out:json];
+      (
+        node["shop"="video_games"](around:$radius, $lat, $lon);
+        node["amenity"="arcade"](around:$radius, $lat, $lon);
       );
-    },
-  );
-}
+      out body;
+    """;
+    final String url =
+        "https://overpass-api.de/api/interpreter?data=${Uri.encodeComponent(query)}";
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        List<Marker> markers = [];
+        for (var element in data["elements"]) {
+          double elementLat = element["lat"];
+          double elementLon = element["lon"];
+          String name = element["tags"]?["name"] ?? "Local de Jogos";
+          markers.add(
+            Marker(
+              width: 40.0,
+              height: 40.0,
+              point: LatLng(elementLat, elementLon),
+              child: GestureDetector(
+                onTap: () {
+                  _showLocationDetails(name);
+                },
+                child: Icon(
+                  Icons.videogame_asset,
+                  color: Colors.purple,
+                  size: 30.0,
+                ),
+              ),
+            ),
+          );
+        }
+        setState(() {
+          _gamePOIMarkers = markers;
+        });
+      } else {
+        print("Erro ao buscar POIs de jogos: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Erro ao buscar POIs de jogos: $e");
+    }
+  }
+
+  void _showUserMarkerOptions(int index) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _userAddedDetails[index],
+                style: TextStyle(fontSize: 18),
+              ),
+              SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _userAddedMarkers.removeAt(index);
+                    _userAddedDetails.removeAt(index);
+                  });
+                  Navigator.of(context).pop();
+                },
+                child: Text("Apagar ponto"),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Future<void> _searchLocation() async {
     // Aqui você pode implementar a busca de localização com geocoding
@@ -187,65 +248,64 @@ class MapaJogosScreenState extends State<MapaJogosScreen> {
 
   // Função para exibir diálogo e adicionar ponto de interesse
   Future<void> _showAddInterestDialog(LatLng latlng) async {
-  // Calcula a distância em metros entre a localização atual e o ponto selecionado
-  double distanceMeters = Geolocator.distanceBetween(
-    _currentLocation.latitude,
-    _currentLocation.longitude,
-    latlng.latitude,
-    latlng.longitude,
-  );
+    // Calcula a distância em metros entre a localização atual e o ponto selecionado
+    double distanceMeters = Geolocator.distanceBetween(
+      _currentLocation.latitude,
+      _currentLocation.longitude,
+      latlng.latitude,
+      latlng.longitude,
+    );
 
-  // Formata a distância para exibir em metros ou quilômetros
-  String distanceText = distanceMeters > 1000
-      ? '${(distanceMeters / 1000).toStringAsFixed(2)} km'
-      : '${distanceMeters.toStringAsFixed(2)} m';
+    // Formata a distância para exibir em metros ou quilômetros
+    String distanceText = distanceMeters > 1000
+        ? '${(distanceMeters / 1000).toStringAsFixed(2)} km'
+        : '${distanceMeters.toStringAsFixed(2)} m';
 
-  String detail = "";
-  await showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text("Adicionar ponto de interesse"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Exibe a distância calculada
-            Text("Distância do usuário: $distanceText"),
-            SizedBox(height: 10),
-            TextField(
-              autofocus: true,
-              decoration: InputDecoration(hintText: "Descrição do ponto"),
-              onChanged: (value) {
-                detail = value;
+    String detail = "";
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Adicionar ponto de interesse"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Exibe a distância calculada
+              Text("Distância do usuário: $distanceText"),
+              SizedBox(height: 10),
+              TextField(
+                autofocus: true,
+                decoration: InputDecoration(hintText: "Descrição do ponto"),
+                onChanged: (value) {
+                  detail = value;
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
               },
+              child: Text("Cancelar"),
+            ),
+            TextButton(
+              onPressed: () {
+                if (detail.isNotEmpty) {
+                  setState(() {
+                    _userAddedMarkers.add(latlng);
+                    _userAddedDetails.add(detail);
+                  });
+                }
+                Navigator.of(context).pop();
+              },
+              child: Text("Adicionar"),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text("Cancelar"),
-          ),
-          TextButton(
-            onPressed: () {
-              if (detail.isNotEmpty) {
-                setState(() {
-                  _userAddedMarkers.add(latlng);
-                  _userAddedDetails.add(detail);
-                });
-              }
-              Navigator.of(context).pop();
-            },
-            child: Text("Adicionar"),
-          ),
-        ],
-      );
-    },
-  );
-}
-
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -326,7 +386,7 @@ class MapaJogosScreenState extends State<MapaJogosScreen> {
                           size: 30.0,
                         ),
                       ),
-                    // Marcadores de jogos
+                    // Marcadores fixos de jogos
                     ..._gameLocations.asMap().entries.map((entry) {
                       int index = entry.key;
                       LatLng location = entry.value;
@@ -347,27 +407,27 @@ class MapaJogosScreenState extends State<MapaJogosScreen> {
                       );
                     }),
                     // Marcadores de pontos de interesse adicionados pelo usuário
-                ..._userAddedMarkers.asMap().entries.map((entry) {
-                  int index = entry.key;
-                  LatLng location = entry.value;
-                  return Marker(
-                    width: 40.0,
-                    height: 40.0,
-                    point: location,
-                    child: GestureDetector(
-                      onTap: () {
-                        // Exibe as opções para o ponto: visualizar detalhes e apagar
-                        _showUserMarkerOptions(index);
-                      },
-                      child: Icon(
-                        Icons.star,
-                        color: Colors.green,
-                        size: 30.0,
-                      ),
-                    ),
-                  );
-                }),
-
+                    ..._userAddedMarkers.asMap().entries.map((entry) {
+                      int index = entry.key;
+                      LatLng location = entry.value;
+                      return Marker(
+                        width: 40.0,
+                        height: 40.0,
+                        point: location,
+                        child: GestureDetector(
+                          onTap: () {
+                            _showUserMarkerOptions(index);
+                          },
+                          child: Icon(
+                            Icons.star,
+                            color: Colors.green,
+                            size: 30.0,
+                          ),
+                        ),
+                      );
+                    }),
+                    // Marcadores dos POIs obtidos do OpenStreetMap
+                    ..._gamePOIMarkers,
                   ],
                 ),
               ],

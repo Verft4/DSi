@@ -80,32 +80,61 @@ class _NotesPageState extends State<NotesPage> {
     }
   }
 
-  void _showAddNoteDialog() {
-    TextEditingController titleController = TextEditingController();
-    TextEditingController contentController = TextEditingController();
+    void _showAddNoteDialog() {
+      TextEditingController titleController = TextEditingController();
+      TextEditingController contentController = TextEditingController();
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => _buildNoteEditor(
-        title: 'Adicionar Nota',
-        titleController: titleController,
-        contentController: contentController,
-        onSave: () async {
-          if (titleController.text.isNotEmpty && contentController.text.isNotEmpty) {
-            await _noteService.saveNote(uid, Note(
-              title: titleController.text,
-              content: contentController.text,
-              creationDate: DateTime.now(),
-            ));
-            _fetchNotes();
-            if (mounted){
-            Navigator.pop(context);}
-          }
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('Adicionar Nota'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: InputDecoration(labelText: 'Título'),
+                  ),
+                  SizedBox(height: 12),
+                  TextField(
+                    controller: contentController,
+                    maxLines: 3,
+                    decoration: InputDecoration(labelText: 'Conteúdo'),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () async {
+                  if (titleController.text.isNotEmpty &&
+                      contentController.text.isNotEmpty) {
+                    await _noteService.saveNote(
+                      uid,
+                      Note(
+                        title: titleController.text,
+                        content: contentController.text,
+                        creationDate: DateTime.now(),
+                      ),
+                    );
+                    _fetchNotes();
+                    if (mounted){
+                    Navigator.pop(context);
+                  }}
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color.fromARGB(255, 188, 185, 225),
+                  padding: EdgeInsets.symmetric(horizontal: 50, vertical: 12),
+                ),
+                child: Text('Salvar Nota'),
+              ),
+            ],
+          );
         },
-      ),
-    );
-  }
+      );
+    }
 
   void _showEditNoteDialog(Note note) {
     TextEditingController titleController = TextEditingController(text: note.title);

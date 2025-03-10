@@ -1,6 +1,6 @@
 import 'package:namer_app/bibliotecas.dart'; 
 import 'quiz.dart';
-
+import 'package:intl/intl.dart';
 
 
 class ProfileCreationPage extends StatefulWidget {
@@ -11,9 +11,12 @@ class ProfileCreationPage extends StatefulWidget {
 class _ProfileCreationPageState extends State<ProfileCreationPage> {
   final _formKey = GlobalKey<FormState>();
   String? nome;
-  String? dataNascimento;
+  DateTime? dataNascimento; // Armazena a data como DateTime
   String? genero;
   String? categoriaFavorita;
+
+  // Controlador para o campo de data
+  final TextEditingController _dataNascimentoController = TextEditingController();
 
   List<String> categorias = [];
   List<String> generos = [];
@@ -24,9 +27,14 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
     carregarDadosCsv();
   }
 
+  @override
+  void dispose() {
+    _dataNascimentoController.dispose();
+    super.dispose();
+  }
+
   Future<void> carregarDadosCsv() async {
-    final String response =
-        await rootBundle.loadString('assets/dataset_filtrado.csv');
+    final String response = await rootBundle.loadString('assets/dataset_filtrado.csv');
     final List<List<dynamic>> data = CsvToListConverter().convert(response);
 
     Set<String> categoriasSet = {};
@@ -64,33 +72,47 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
       return;
     }
 
-    // Instância do Firestore
     final firestore = FirebaseFirestore.instance;
 
-    // Salvar os dados no Firestore
     await firestore.collection('usuarios').doc(uid).set({
       'nome': nome,
-      'dataNascimento': dataNascimento,
+      'dataNascimento': _dataNascimentoController.text,
       'genero': genero,
       'categoriaFavorita': categoriaFavorita,
     });
 
-    // Navegar para a próxima página após salvar
-    if (mounted){
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context)=>QuizPage(),
-        settings: RouteSettings(
-          arguments: {
-            'nome': nome,
-            'dataNascimento': dataNascimento,
-            'genero': genero,
-            'categoriaFavorita': categoriaFavorita,
-          },
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => QuizPage(),
+          settings: RouteSettings(
+            arguments: {
+              'nome': nome,
+              'dataNascimento': _dataNascimentoController.text,
+              'genero': genero,
+              'categoriaFavorita': categoriaFavorita,
+            },
+          ),
         ),
-      ),
-    );}
+      );
+    }
+  }
+
+  // Função para selecionar a data usando o DatePicker
+  Future<void> _selectDataNascimento() async {
+    DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2000, 1, 1),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (pickedDate != null) {
+      setState(() {
+        dataNascimento = pickedDate;
+        _dataNascimentoController.text = DateFormat('dd/MM/yyyy').format(pickedDate);
+      });
+    }
   }
 
   @override
@@ -100,13 +122,13 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // Cabeçalho da página
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Container(
                 width: MediaQuery.of(context).size.width,
                 height: MediaQuery.of(context).size.height * 0.3,
-                decoration: BoxDecoration(
-                    color: Color.fromARGB(255, 188, 185, 225)),
+                decoration: BoxDecoration(color: Color.fromARGB(255, 188, 185, 225)),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -122,6 +144,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                 ),
               ),
             ),
+            // Formulário
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -149,8 +172,9 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                       ),
                       SizedBox(height: 20),
 
-                      // Campo Data de Nascimento
+                      // Campo Data de Nascimento com DatePicker
                       TextFormField(
+                        controller: _dataNascimentoController,
                         decoration: InputDecoration(
                           labelText: 'Data de Nascimento (DD/MM/AAAA)',
                           hintText: 'Exemplo: 25/11/1995',
@@ -158,17 +182,11 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                             borderRadius: BorderRadius.circular(15),
                           ),
                         ),
-                        onSaved: (value) {
-                          dataNascimento = value;
-                        },
-                        keyboardType: TextInputType.datetime,
+                        readOnly: true,
+                        onTap: _selectDataNascimento,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Informe a data de nascimento';
-                          }
-                          final regex = RegExp(r'^\d{2}/\d{2}/\d{4}$');
-                          if (!regex.hasMatch(value)) {
-                            return 'Formato inválido. Use DD/MM/AAAA';
                           }
                           return null;
                         },
@@ -181,19 +199,16 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                           if (textEditingValue.text.isEmpty) {
                             return const Iterable<String>.empty();
                           }
-                          return generos.where((genero) => genero
-                              .toLowerCase()
-                              .contains(textEditingValue.text.toLowerCase()));
+                          return generos.where((genero) =>
+                              genero.toLowerCase().contains(textEditingValue.text.toLowerCase()));
                         },
                         onSelected: (String selection) {
                           setState(() {
                             genero = selection;
                           });
                         },
-                        fieldViewBuilder: (BuildContext context,
-                            TextEditingController textEditingController,
-                            FocusNode focusNode,
-                            VoidCallback onFieldSubmitted) {
+                        fieldViewBuilder: (BuildContext context, TextEditingController textEditingController,
+                            FocusNode focusNode, VoidCallback onFieldSubmitted) {
                           return TextFormField(
                             controller: textEditingController,
                             focusNode: focusNode,
@@ -214,19 +229,16 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                           if (textEditingValue.text.isEmpty) {
                             return const Iterable<String>.empty();
                           }
-                          return categorias.where((categoria) => categoria
-                              .toLowerCase()
-                              .contains(textEditingValue.text.toLowerCase()));
+                          return categorias.where((categoria) =>
+                              categoria.toLowerCase().contains(textEditingValue.text.toLowerCase()));
                         },
                         onSelected: (String selection) {
                           setState(() {
                             categoriaFavorita = selection;
                           });
                         },
-                        fieldViewBuilder: (BuildContext context,
-                            TextEditingController textEditingController,
-                            FocusNode focusNode,
-                            VoidCallback onFieldSubmitted) {
+                        fieldViewBuilder: (BuildContext context, TextEditingController textEditingController,
+                            FocusNode focusNode, VoidCallback onFieldSubmitted) {
                           return TextFormField(
                             controller: textEditingController,
                             focusNode: focusNode,
@@ -246,15 +258,14 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
                             _formKey.currentState?.save();
-                            _salvarUsuarioNoFirestore(); // Salva no Firestore
+                            _salvarUsuarioNoFirestore();
                           }
                         },
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
-                          padding: EdgeInsets.symmetric(
-                              vertical: 14, horizontal: 24),
+                          padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
                         ),
                         child: Text('Salvar e Continuar'),
                       ),
@@ -269,3 +280,4 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
     );
   }
 }
+

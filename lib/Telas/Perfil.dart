@@ -1,10 +1,9 @@
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-class Profilels extends StatefulWidget {
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:namer_app/bibliotecas.dart';
+
+class Profilels extends StatefulWidget { 
   @override
   _ProfilelsState createState() => _ProfilelsState();
 }
@@ -18,24 +17,36 @@ class _ProfilelsState extends State<Profilels> {
   File? _selectedImageFile;
   String? _selectedAssetImage;
 
+  // Função que carrega os dados do usuário e a imagem de perfil do Firestore
   Future<Map<String, dynamic>> _fetchUserProfile(String uid) async {
     if (uid.isEmpty) {
       throw Exception("UID inválido ou não encontrado.");
     }
     try {
       final firestore = FirebaseFirestore.instance;
-      final docSnapshot = await firestore.collection('usuarios').doc(uid).get();
-
-      if (docSnapshot.exists) {
-        return docSnapshot.data()!;
+      // Dados do usuário na coleção 'usuarios'
+      final userDocSnapshot = await firestore.collection('usuarios').doc(uid).get();
+      Map<String, dynamic> userData;
+      if (userDocSnapshot.exists) {
+        userData = userDocSnapshot.data()!;
       } else {
-        return {
+        userData = {
           'nome': 'Nome não informado',
           'dataNascimento': 'Data não informada',
           'genero': 'Gênero não informado',
           'categoriaFavorita': 'Categoria não informada',
         };
       }
+      // Tenta recuperar a imagem salva na coleção 'imagens'
+      final imageDocSnapshot = await firestore.collection('imagens').doc(uid).get();
+      if (imageDocSnapshot.exists) {
+        userData['profileImageUrl'] = imageDocSnapshot.data()?['url'];
+        userData['profileImageType'] = imageDocSnapshot.data()?['type'];
+      } else {
+        userData['profileImageUrl'] = defaultImageUrl;
+        userData['profileImageType'] = 'network';
+      }
+      return userData;
     } catch (e) {
       throw Exception("Erro ao acessar Firestore: $e");
     }
@@ -50,14 +61,41 @@ class _ProfilelsState extends State<Profilels> {
     }
   }
 
-  // Retorna a imagem de perfil baseada na seleção do usuário
-  ImageProvider _getProfileImage() {
+
+  // Upload da imagem para o Firebase Storage e retorna o download URL
+ 
+  
+  Future<void> _uploadAndSaveImage(File image) async {
+  final uid = await _getUid();
+  final imageUrl = await _uploadImageToSupabase(image, uid);
+  
+  await FirebaseFirestore.instance
+      .collection('imagens')
+      .doc(uid)
+      .set({'url': imageUrl, 'type': 'file'});
+}
+
+  // Salva o caminho do asset escolhido no Firestore
+  Future<void> _saveAssetImage(String assetPath) async {
+    final uid = await _getUid();
+    await FirebaseFirestore.instance
+        .collection('imagens')
+        .doc(uid)
+        .set({'url': assetPath, 'type': 'asset'});
+  }
+
+  // Retorna a imagem de perfil baseada na seleção do usuário ou na imagem salva
+  ImageProvider _getProfileImage(String profileImageUrl, String profileImageType) {
     if (_selectedImageFile != null) {
       return FileImage(_selectedImageFile!);
     } else if (_selectedAssetImage != null) {
       return AssetImage(_selectedAssetImage!);
     } else {
-      return NetworkImage(defaultImageUrl);
+      if (profileImageType == 'asset') {
+        return AssetImage(profileImageUrl);
+      } else {
+        return NetworkImage(profileImageUrl);
+      }
     }
   }
 
@@ -92,19 +130,22 @@ class _ProfilelsState extends State<Profilels> {
     );
   }
 
-  // Utiliza o image_picker para selecionar uma imagem da galeria
+  // Seleciona uma imagem da galeria, exibe e salva no Firestore
   Future<void> _pickImageFromGallery() async {
-    final pickedFile =
-        await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImageFile = File(pickedFile.path);
-        _selectedAssetImage = null; // Reseta a seleção de assets
-      });
-    }
+  final pickedFile =
+      await ImagePicker().pickImage(source: ImageSource.gallery);
+  if (pickedFile != null) {
+    final imageFile = File(pickedFile.path);
+    setState(() {
+      _selectedImageFile = imageFile;
+      _selectedAssetImage = null; // Reseta a seleção de assets
+    });
+    await _uploadAndSaveImage(imageFile);
   }
+}
 
-  // Abre uma nova tela para seleção de imagem dos assets
+
+  // Abre uma nova tela para seleção de imagem dos assets e salva no Firestore
   Future<void> _selectImageFromAssets() async {
     final selectedImage = await Navigator.push(
       context,
@@ -116,6 +157,7 @@ class _ProfilelsState extends State<Profilels> {
         _selectedAssetImage = selectedImage;
         _selectedImageFile = null; // Reseta a seleção da galeria
       });
+      await _saveAssetImage(selectedImage);
     }
   }
 
@@ -176,12 +218,15 @@ class _ProfilelsState extends State<Profilels> {
                     ),
                     child: Column(
                       children: <Widget>[
-                        // Envolva o CircleAvatar com GestureDetector para detectar toques
+                        // Ao tocar, permite selecionar nova imagem
                         GestureDetector(
                           onTap: _showImageSelectionOptions,
                           child: CircleAvatar(
                             radius: 60,
-                            backgroundImage: _getProfileImage(),
+                            backgroundImage: _getProfileImage(
+                              data['profileImageUrl'],
+                              data['profileImageType'],
+                            ),
                           ),
                         ),
                         SizedBox(height: 8),
@@ -260,7 +305,7 @@ class _ProfilelsState extends State<Profilels> {
 
 // Tela para seleção de imagens dos assets
 class AssetImageSelectionScreen extends StatelessWidget {
-  // Defina aqui os caminhos das imagens disponíveis na pasta assets/imagens.
+  // Defina os caminhos das imagens disponíveis na pasta assets/imagens.
   final List<String> assetImages = [
     'assets/images/gato1.jpeg',
     'assets/images/gato2.jpg',
@@ -297,5 +342,23 @@ class AssetImageSelectionScreen extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+
+Future<String> _uploadImageToSupabase(File image, String uid) async {
+  final supabase = Supabase.instance.client;
+  final bucketName = 'profile-images';
+  final filePath = 'profileImages/$uid.jpg';
+
+  try {
+    // Pass the file directly instead of its bytes
+    await supabase.storage.from(bucketName).upload(filePath, image);
+
+    // Generate and return the public URL
+    final publicUrl = supabase.storage.from(bucketName).getPublicUrl(filePath);
+    return publicUrl;
+  } catch (e) {
+    throw Exception("Erro ao fazer upload da imagem: $e");
   }
 }

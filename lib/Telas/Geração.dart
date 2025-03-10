@@ -3,6 +3,8 @@ import 'package:namer_app/bibliotecas.dart';
 
 
 
+
+
 class MyAppState extends ChangeNotifier {
   List<List<dynamic>> jogos = [];
   Set<int> favorites = {};
@@ -14,11 +16,18 @@ class MyAppState extends ChangeNotifier {
       favorites.add(appid);
       notifyListeners();
 
-      // Salvar a lista atualizada de favoritos no Firestore
+      // Salva a lista atualizada de favoritos no Firestore
       await _salvarFavoritosNoFirestore();
     }
   }
 
+  Future<void> removerDosFavoritos(int appid) async {
+    if (favorites.contains(appid)) {
+      favorites.remove(appid);
+      notifyListeners();
+      await _salvarFavoritosNoFirestore();
+    }
+  }
 
   Future<void> carregarDadosCsv() async {
     try {
@@ -28,13 +37,6 @@ class MyAppState extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print("Erro ao carregar CSV: $e");
-    }
-  }
-   Future<void> removerDosFavoritos(int appid) async {
-    if (favorites.contains(appid)) {
-      favorites.remove(appid);
-      notifyListeners();
-      await _salvarFavoritosNoFirestore();
     }
   }
 
@@ -53,16 +55,15 @@ class MyAppState extends ChangeNotifier {
   }
 
   Future<void> _salvarFavoritosNoFirestore() async {
-  final prefs = await SharedPreferences.getInstance();
-  final uid = prefs.getString('uid');
+    final prefs = await SharedPreferences.getInstance();
+    final uid = prefs.getString('uid');
 
-  if (uid != null) {
-    // Atualiza o Firestore com a lista atual de favoritos
-    await _firestore.collection('favoritos').doc(uid).set({
-      'favoritos': favorites.toList(),
-    });
+    if (uid != null) {
+      await _firestore.collection('favoritos').doc(uid).set({
+        'favoritos': favorites.toList(),
+      });
+    }
   }
-}
 }
 
 
@@ -78,7 +79,7 @@ class _GeneratorPageState extends State<GeneratorPage>
   List<String> recomendacoes = [];
   List<List<dynamic>> jogosRecomendados = [];
   bool usandoRecomendacoes = false;
-  
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -92,7 +93,7 @@ class _GeneratorPageState extends State<GeneratorPage>
     );
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(_animationController);
 
-    // Define o índice inicial após a primeira renderização
+    // Após o primeiro frame, define um índice aleatório para o jogo atual
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final appState = context.read<MyAppState>();
       if (appState.jogos.isNotEmpty) {
@@ -113,6 +114,34 @@ class _GeneratorPageState extends State<GeneratorPage>
     await context.read<MyAppState>().carregarDadosCsv();
   }
 
+  // Busca as recomendações salvas no SharedPreferences
+  Future<void> getRecomendacoesFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Recupera a lista de recomendações ou retorna uma lista vazia
+    final savedRecomendacoes = prefs.getStringList('recomendacoes') ?? [];
+    setState(() {
+      recomendacoes = savedRecomendacoes;
+      if (recomendacoes.isNotEmpty) {
+        final appState = context.read<MyAppState>();
+        // Filtra os jogos do CSV que estão na lista de recomendações
+        jogosRecomendados = appState.jogos.where((jogo) {
+          final String nomeJogo = jogo[1]; // Supondo que o nome do jogo está no índice 1
+          return recomendacoes.contains(nomeJogo);
+        }).toList();
+        usandoRecomendacoes = jogosRecomendados.isNotEmpty;
+      } else {
+        usandoRecomendacoes = false;
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Em vez de receber a lista via argumentos, pega do SharedPreferences
+    getRecomendacoesFromPrefs();
+  }
+
   // Ao trocar de jogo, reinicia a animação
   void proximoJogo() {
     setState(() {
@@ -129,32 +158,14 @@ class _GeneratorPageState extends State<GeneratorPage>
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args != null && args['recomendacoes'] != null) {
-      setState(() {
-        recomendacoes = List<String>.from(args['recomendacoes']);
-        if (recomendacoes.isNotEmpty) {
-          final appState = context.read<MyAppState>();
-          jogosRecomendados = appState.jogos.where((jogo) {
-            final String name = jogo[1]; // Supondo que o nome do jogo está no índice 1
-            return recomendacoes.contains(name);
-          }).toList();
-          usandoRecomendacoes = jogosRecomendados.isNotEmpty;
-        } else {
-          usandoRecomendacoes = false;
-        }
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final appState = context.watch<MyAppState>();
-    final jogos = usandoRecomendacoes && jogosRecomendados.isNotEmpty ? jogosRecomendados : appState.jogos;
+    // Define qual lista de jogos usar: os recomendados ou todos os jogos carregados
+    final jogos = usandoRecomendacoes && jogosRecomendados.isNotEmpty
+        ? jogosRecomendados
+        : appState.jogos;
 
-    // Caso não haja jogos, exibe um indicador de carregamento
+    // Se não houver jogos carregados, exibe um indicador de carregamento
     if (jogos.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: Text("Gerador de Jogos")),
@@ -162,6 +173,7 @@ class _GeneratorPageState extends State<GeneratorPage>
       );
     }
 
+    // Extração dos dados do jogo atual
     final jogoAtual = jogos[currentIndex];
     final int appid = int.tryParse(jogoAtual[0].toString()) ?? 0;
     final String header = jogoAtual[12];
@@ -175,7 +187,7 @@ class _GeneratorPageState extends State<GeneratorPage>
       body: SafeArea(
         child: Column(
           children: [
-            // Exibe as recomendações em uma lista horizontal utilizando chips
+            // Exibe as recomendações em uma lista horizontal (utilizando Chips)
             if (recomendacoes.isNotEmpty)
               Container(
                 height: 80,
@@ -199,7 +211,7 @@ class _GeneratorPageState extends State<GeneratorPage>
                   child: GestureDetector(
                     onVerticalDragEnd: (details) {
                       if (details.primaryVelocity != null) {
-                        // Se o gesto for para baixo, adiciona aos favoritos com feedback
+                        // Se o gesto for para baixo, adiciona o jogo aos favoritos
                         if (details.primaryVelocity! > 0) {
                           appState.adicionarAosFavoritos(appid);
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -217,7 +229,7 @@ class _GeneratorPageState extends State<GeneratorPage>
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withValues(),
+                            color: Colors.grey.withOpacity(0.5),
                             spreadRadius: 4,
                             blurRadius: 10,
                             offset: Offset(0, 4),
@@ -230,7 +242,7 @@ class _GeneratorPageState extends State<GeneratorPage>
                       ),
                       child: Stack(
                         children: [
-                          // Botão de favorito posicionado no canto superior direito
+                          // Botão para favoritar o jogo, posicionado no canto superior direito
                           Positioned(
                             top: 16,
                             right: 16,

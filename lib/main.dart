@@ -1,12 +1,20 @@
 
 import 'bibliotecas.dart';
 import 'Telas/utilidades.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // Inicializa o Supabase
+  await Supabase.initialize(
+    url: 'https://qmsthgewcmcvxyxnqwap.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtc3RoZ2V3Y21jdnh5eG5xd2FwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2MzQ4MjksImV4cCI6MjA1NzIxMDgyOX0.jL_nbqyo9h2wir3yup6p5S0sfEeH2dA6Pg68W0Br8Uc',
+  );
 
   runApp(
     ChangeNotifierProvider(
